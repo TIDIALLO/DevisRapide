@@ -22,8 +22,9 @@ export async function downloadQuotePdf(params: {
     profile: params.profile,
   });
   // Type assertion pour résoudre l'incompatibilité de types avec @react-pdf/renderer
-  // @ts-expect-error - @react-pdf/renderer types are incompatible with React.createElement
-  const blob = await pdf(element).toBlob();
+  // Le type de pdf() attend DocumentProps mais React.createElement retourne FunctionComponentElement
+  // On utilise un double cast pour contourner cette incompatibilité de types
+  const blob = await pdf(element as unknown as React.ReactElement).toBlob();
 
   // Si returnBlob est true, retourner le blob sans télécharger
   if (params.returnBlob) {
