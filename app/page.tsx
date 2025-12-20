@@ -1,65 +1,252 @@
-import Image from "next/image";
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { FileText, Zap, TrendingUp, Clock, ShieldCheck, Smartphone } from 'lucide-react';
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-background">
+      {/* Background: blanc (demandé) */}
+
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b bg-background/75 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+              <FileText className="h-5 w-5" />
+            </span>
+            <span className="text-lg">DevisRapide</span>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <Link href="/connexion">
+              <Button variant="ghost">Connexion</Button>
+            </Link>
+            <Link href="/inscription">
+              <Button>Commencer</Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="mx-auto max-w-6xl px-4 pt-16 pb-10 md:pt-20">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border bg-card/60 px-3 py-1 text-sm text-muted-foreground shadow-sm">
+            <Smartphone className="h-4 w-4" />
+            Mobile-first • WhatsApp-ready • 3 minutes
+          </div>
+
+          <h1 className="text-balance text-4xl font-semibold tracking-tight md:text-6xl">
+            Créez des devis professionnels{' '}
+            <span className="bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">
+              en moins de 3 minutes
+            </span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          <p className="mt-5 text-pretty text-base text-muted-foreground md:text-lg">
+            L&apos;application pensée pour les artisans au Sénégal : créez, calculez et envoyez des devis PDF
+            via WhatsApp, SMS ou Email — sans prise de tête.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link href="/inscription" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto">
+                Commencer gratuitement
+              </Button>
+            </Link>
+            <Link href="/connexion" className="w-full sm:w-auto">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                Se connecter
+              </Button>
+            </Link>
+          </div>
+
+          <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" /> Gratuit pour commencer
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" /> Sans carte bancaire
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" /> 5 devis/mois offerts
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="mx-auto max-w-6xl px-4 py-12 md:py-16">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              title: 'Rapide',
+              desc: 'Créez un devis complet en moins de 3 minutes depuis votre smartphone.',
+              icon: Clock,
+            },
+            {
+              title: 'Professionnel',
+              desc: 'PDF propre, logo, totaux clairs : inspirez confiance immédiatement.',
+              icon: FileText,
+            },
+            {
+              title: 'Simple',
+              desc: 'Catalogue + clients + calculs automatiques. Zéro erreurs de calcul.',
+              icon: Zap,
+            },
+            {
+              title: 'Organisé',
+              desc: 'Historique, statuts, renvoi, duplication : tout est sous contrôle.',
+              icon: TrendingUp,
+            },
+          ].map((f) => {
+            const Icon = f.icon;
+            return (
+              <div
+                key={f.title}
+                className="group relative overflow-hidden rounded-2xl border bg-gradient-to-b from-white to-slate-50/70 p-5 shadow-sm transition will-change-transform hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                {/* after hover effect (halo) */}
+                <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                  <div className="absolute -inset-10 bg-[radial-gradient(300px_180px_at_30%_20%,hsl(var(--primary)/0.20),transparent)]" />
+                </div>
+                <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
+                </div>
+
+                <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="font-semibold tracking-tight">{f.title}</div>
+                <div className="mt-2 text-sm text-muted-foreground">{f.desc}</div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section className="mx-auto max-w-6xl px-4 py-12 md:py-16">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+            Tarifs simples
+          </h2>
+          <p className="mt-3 text-muted-foreground">
+            Commence gratuitement. Passe PRO quand tu as besoin d&apos;illimité.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="mt-10 grid gap-6 md:grid-cols-2">
+          {/* Plan Gratuit */}
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-gray-200 bg-white p-8 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-transparent rounded-bl-full opacity-50" />
+            <div className="relative">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Plan</div>
+                  <div className="text-3xl font-bold tracking-tight text-gray-900">Gratuit</div>
+                </div>
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                  Pour démarrer
+                </span>
+              </div>
+              
+              <div className="my-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-5xl font-bold text-gray-900">0</span>
+                  <span className="text-3xl font-bold text-gray-400">.</span>
+                  <span className="text-5xl font-bold text-gray-900">000</span>
+                  <span className="text-xl font-semibold text-gray-600 ml-2">FCFA</span>
+                </div>
+                <div className="text-sm text-gray-500 mt-1">/mois</div>
+              </div>
+
+              <ul className="space-y-3 text-sm mb-8">
+                {[
+                  '5 devis/mois',
+                  '20 articles catalogue',
+                  '10 clients max',
+                  'Envoi WhatsApp/SMS/Email',
+                  'Watermark sur PDF',
+                ].map((t) => (
+                  <li key={t} className="flex items-center gap-3 text-gray-700">
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
+                      <span className="w-2 h-2 rounded-full bg-blue-600" />
+                    </div>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+              
+              <Link href="/inscription" className="block">
+                <Button variant="outline" className="w-full border-2 hover:bg-gray-50">
+                  Commencer gratuitement
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Plan PRO */}
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-primary bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 p-8 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-primary/20 to-transparent rounded-bl-full" />
+            <div className="absolute top-4 right-4">
+              <span className="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white shadow-lg">
+                ⭐ Populaire
+              </span>
+            </div>
+            
+            <div className="relative">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="text-xs font-semibold text-primary/80 uppercase tracking-wider mb-1">Plan</div>
+                  <div className="text-3xl font-bold tracking-tight text-gray-900">PRO</div>
+                </div>
+              </div>
+
+              <div className="my-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-5xl font-bold text-gray-900">5</span>
+                  <span className="text-3xl font-bold text-primary">.</span>
+                  <span className="text-5xl font-bold text-gray-900">000</span>
+                  <span className="text-xl font-semibold text-gray-600 ml-2">FCFA</span>
+                </div>
+                <div className="text-sm text-gray-500 mt-1">/mois</div>
+              </div>
+
+              <ul className="space-y-3 text-sm mb-8">
+                {[
+                  'Devis illimités',
+                  'Catalogue illimité',
+                  'Clients illimités',
+                  'Sans watermark',
+                  'Templates multiples',
+                  'Support WhatsApp prioritaire',
+                ].map((t) => (
+                  <li key={t} className="flex items-center gap-3 text-gray-800 font-medium">
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                      <span className="w-2 h-2 rounded-full bg-white" />
+                    </div>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link href="/inscription" className="block">
+                <Button className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all">
+                  Essai 14 jours gratuits
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
-      </main>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t bg-background">
+        <div className="mx-auto max-w-6xl px-4 py-10 text-center text-sm text-muted-foreground">
+          <p>© 2024 DevisRapide. Fait avec soin pour les artisans sénégalais.</p>
+        </div>
+      </footer>
     </div>
   );
 }

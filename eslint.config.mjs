@@ -13,6 +13,15 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Désactiver certaines règles strictes pour le MVP
+      'react/no-unescaped-entities': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@next/next/no-img-element': 'warn',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
 ]);
 
 export default eslintConfig;

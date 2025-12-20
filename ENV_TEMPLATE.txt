@@ -1,0 +1,11 @@
+Copie/colle ces variables dans un fichier `devisrapide/.env.local`
+
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+# Alternative (selon ton dashboard Supabase) :
+# NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+
+Optionnel (NE PAS mettre en public / NE PAS préfixer NEXT_PUBLIC_):
+SUPABASE_SERVICE_ROLE_KEY=
+
+

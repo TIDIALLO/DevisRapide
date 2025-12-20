@@ -1,0 +1,128 @@
+import type { Profession } from '@/types';
+
+export interface CatalogTemplate {
+  name: string;
+  description?: string;
+  unit_price: number;
+  unit: string;
+  category: string;
+}
+
+export const CATALOG_TEMPLATES: Record<Profession, CatalogTemplate[]> = {
+  peintre: [
+    { name: 'Peinture intérieure (mur)', unit_price: 2500, unit: 'm²', category: 'Peinture' },
+    { name: 'Peinture intérieure (plafond)', unit_price: 3000, unit: 'm²', category: 'Peinture' },
+    { name: 'Peinture extérieure (façade)', unit_price: 3500, unit: 'm²', category: 'Peinture' },
+    { name: 'Peinture porte bois', unit_price: 15000, unit: 'pièce', category: 'Peinture' },
+    { name: 'Peinture fenêtre', unit_price: 8000, unit: 'pièce', category: 'Peinture' },
+    { name: 'Enduit de lissage', unit_price: 2000, unit: 'm²', category: 'Préparation' },
+    { name: 'Ponçage mur', unit_price: 1500, unit: 'm²', category: 'Préparation' },
+    { name: 'Rebouchage fissures', unit_price: 500, unit: 'mètre', category: 'Préparation' },
+    { name: 'Sous-couche', unit_price: 1000, unit: 'm²', category: 'Préparation' },
+    { name: 'Peinture décorative (motif)', unit_price: 5000, unit: 'm²', category: 'Décoration' },
+    { name: 'Pose papier peint', unit_price: 3500, unit: 'm²', category: 'Décoration' },
+    { name: 'Main d\'oeuvre peintre', unit_price: 25000, unit: 'jour', category: 'Main d\'oeuvre' },
+    { name: 'Déplacement', unit_price: 10000, unit: 'forfait', category: 'Frais' },
+    { name: 'Location échafaudage', unit_price: 15000, unit: 'jour', category: 'Équipement' },
+    { name: 'Bâche de protection', unit_price: 5000, unit: 'forfait', category: 'Équipement' },
+  ],
+  
+  mecanicien: [
+    { name: 'Vidange moteur', unit_price: 15000, unit: 'forfait', category: 'Entretien' },
+    { name: 'Changement plaquettes frein', unit_price: 25000, unit: 'train', category: 'Freinage' },
+    { name: 'Changement disques frein', unit_price: 35000, unit: 'train', category: 'Freinage' },
+    { name: 'Remplacement batterie', unit_price: 60000, unit: 'pièce', category: 'Électricité' },
+    { name: 'Changement alternateur', unit_price: 80000, unit: 'pièce', category: 'Électricité' },
+    { name: 'Remplacement démarreur', unit_price: 70000, unit: 'pièce', category: 'Électricité' },
+    { name: 'Changement courroie distribution', unit_price: 120000, unit: 'forfait', category: 'Moteur' },
+    { name: 'Vidange boîte de vitesse', unit_price: 40000, unit: 'forfait', category: 'Transmission' },
+    { name: 'Changement embrayage', unit_price: 150000, unit: 'kit', category: 'Transmission' },
+    { name: 'Parallélisme', unit_price: 20000, unit: 'forfait', category: 'Pneumatique' },
+    { name: 'Équilibrage roues', unit_price: 10000, unit: 'train', category: 'Pneumatique' },
+    { name: 'Montage pneu', unit_price: 5000, unit: 'pièce', category: 'Pneumatique' },
+    { name: 'Diagnostic électronique', unit_price: 25000, unit: 'forfait', category: 'Diagnostic' },
+    { name: 'Main d\'oeuvre mécanicien', unit_price: 8000, unit: 'heure', category: 'Main d\'oeuvre' },
+    { name: 'Révision complète', unit_price: 80000, unit: 'forfait', category: 'Entretien' },
+    { name: 'Climatisation recharge', unit_price: 30000, unit: 'forfait', category: 'Confort' },
+    { name: 'Changement filtre à air', unit_price: 15000, unit: 'pièce', category: 'Entretien' },
+    { name: 'Changement filtre à huile', unit_price: 8000, unit: 'pièce', category: 'Entretien' },
+    { name: 'Nettoyage injecteurs', unit_price: 50000, unit: 'forfait', category: 'Moteur' },
+    { name: 'Décalaminage moteur', unit_price: 40000, unit: 'forfait', category: 'Moteur' },
+  ],
+  
+  quincaillier: [
+    { name: 'Ciment (sac 50kg)', unit_price: 4500, unit: 'sac', category: 'Matériaux' },
+    { name: 'Fer à béton (12mm)', unit_price: 850, unit: 'kg', category: 'Matériaux' },
+    { name: 'Sable (mètre cube)', unit_price: 25000, unit: 'm³', category: 'Matériaux' },
+    { name: 'Gravier (mètre cube)', unit_price: 30000, unit: 'm³', category: 'Matériaux' },
+    { name: 'Parpaing (20x20x40)', unit_price: 250, unit: 'pièce', category: 'Matériaux' },
+    { name: 'Tôle ondulée (3m)', unit_price: 8000, unit: 'pièce', category: 'Toiture' },
+    { name: 'Chevron bois (4m)', unit_price: 5000, unit: 'pièce', category: 'Charpente' },
+    { name: 'Planche bois (3m)', unit_price: 3500, unit: 'pièce', category: 'Charpente' },
+    { name: 'Porte métallique', unit_price: 85000, unit: 'pièce', category: 'Menuiserie' },
+    { name: 'Fenêtre aluminium', unit_price: 45000, unit: 'pièce', category: 'Menuiserie' },
+    { name: 'Serrure de porte', unit_price: 15000, unit: 'pièce', category: 'Quincaillerie' },
+    { name: 'Poignée de porte', unit_price: 5000, unit: 'pièce', category: 'Quincaillerie' },
+    { name: 'Carrelage (60x60)', unit_price: 4500, unit: 'm²', category: 'Revêtement' },
+    { name: 'Faïence murale', unit_price: 6000, unit: 'm²', category: 'Revêtement' },
+    { name: 'Colle carrelage (sac 25kg)', unit_price: 3500, unit: 'sac', category: 'Matériaux' },
+    { name: 'Joint carrelage (sac 5kg)', unit_price: 2500, unit: 'sac', category: 'Matériaux' },
+    { name: 'Peinture acrylique (25L)', unit_price: 35000, unit: 'bidon', category: 'Peinture' },
+    { name: 'Peinture glycéro (25L)', unit_price: 45000, unit: 'bidon', category: 'Peinture' },
+    { name: 'Rouleau peinture', unit_price: 2500, unit: 'pièce', category: 'Outils' },
+    { name: 'Pinceau', unit_price: 1500, unit: 'pièce', category: 'Outils' },
+    { name: 'Truelle', unit_price: 3000, unit: 'pièce', category: 'Outils' },
+    { name: 'Niveau à bulle', unit_price: 8000, unit: 'pièce', category: 'Outils' },
+    { name: 'Fil à plomb', unit_price: 2000, unit: 'pièce', category: 'Outils' },
+    { name: 'Mètre ruban (5m)', unit_price: 2500, unit: 'pièce', category: 'Outils' },
+    { name: 'Clous (1kg)', unit_price: 2000, unit: 'kg', category: 'Quincaillerie' },
+    { name: 'Vis (boîte 100pcs)', unit_price: 3000, unit: 'boîte', category: 'Quincaillerie' },
+    { name: 'Cheville (boîte 100pcs)', unit_price: 2500, unit: 'boîte', category: 'Quincaillerie' },
+    { name: 'Tuyau PVC (Ø110mm 3m)', unit_price: 5000, unit: 'pièce', category: 'Plomberie' },
+    { name: 'Coude PVC 90°', unit_price: 500, unit: 'pièce', category: 'Plomberie' },
+    { name: 'Robinet lavabo', unit_price: 12000, unit: 'pièce', category: 'Plomberie' },
+  ],
+  
+  electricien: [
+    { name: 'Installation prise électrique', unit_price: 8000, unit: 'pièce', category: 'Installation' },
+    { name: 'Installation interrupteur', unit_price: 6000, unit: 'pièce', category: 'Installation' },
+    { name: 'Installation point lumineux', unit_price: 10000, unit: 'pièce', category: 'Éclairage' },
+    { name: 'Installation tableau électrique', unit_price: 150000, unit: 'forfait', category: 'Installation' },
+    { name: 'Installation disjoncteur', unit_price: 15000, unit: 'pièce', category: 'Protection' },
+    { name: 'Câblage électrique', unit_price: 2500, unit: 'mètre', category: 'Installation' },
+    { name: 'Installation ventilateur plafond', unit_price: 25000, unit: 'pièce', category: 'Confort' },
+    { name: 'Installation climatiseur', unit_price: 80000, unit: 'forfait', category: 'Confort' },
+    { name: 'Dépannage électrique', unit_price: 20000, unit: 'forfait', category: 'Dépannage' },
+    { name: 'Recherche panne', unit_price: 15000, unit: 'forfait', category: 'Diagnostic' },
+    { name: 'Mise à la terre', unit_price: 50000, unit: 'forfait', category: 'Protection' },
+    { name: 'Main d\'oeuvre électricien', unit_price: 10000, unit: 'heure', category: 'Main d\'oeuvre' },
+    { name: 'Installation groupe électrogène', unit_price: 100000, unit: 'forfait', category: 'Installation' },
+    { name: 'Câble électrique (2.5mm²)', unit_price: 1500, unit: 'mètre', category: 'Matériel' },
+    { name: 'Câble électrique (6mm²)', unit_price: 3000, unit: 'mètre', category: 'Matériel' },
+  ],
+  
+  plombier: [
+    { name: 'Installation évier', unit_price: 30000, unit: 'forfait', category: 'Installation' },
+    { name: 'Installation WC', unit_price: 35000, unit: 'forfait', category: 'Installation' },
+    { name: 'Installation douche', unit_price: 50000, unit: 'forfait', category: 'Installation' },
+    { name: 'Installation lavabo', unit_price: 25000, unit: 'forfait', category: 'Installation' },
+    { name: 'Installation chauffe-eau', unit_price: 80000, unit: 'forfait', category: 'Installation' },
+    { name: 'Débouchage canalisation', unit_price: 25000, unit: 'forfait', category: 'Dépannage' },
+    { name: 'Réparation fuite d\'eau', unit_price: 15000, unit: 'forfait', category: 'Dépannage' },
+    { name: 'Installation tuyauterie', unit_price: 5000, unit: 'mètre', category: 'Installation' },
+    { name: 'Installation robinet', unit_price: 12000, unit: 'pièce', category: 'Installation' },
+    { name: 'Installation fosse septique', unit_price: 200000, unit: 'forfait', category: 'Assainissement' },
+    { name: 'Vidange fosse septique', unit_price: 50000, unit: 'forfait', category: 'Entretien' },
+    { name: 'Main d\'oeuvre plombier', unit_price: 10000, unit: 'heure', category: 'Main d\'oeuvre' },
+    { name: 'Diagnostic plomberie', unit_price: 20000, unit: 'forfait', category: 'Diagnostic' },
+    { name: 'Installation pompe à eau', unit_price: 60000, unit: 'forfait', category: 'Installation' },
+    { name: 'Raccordement eau potable', unit_price: 80000, unit: 'forfait', category: 'Installation' },
+  ],
+  
+  autre: [
+    { name: 'Prestation standard', unit_price: 10000, unit: 'forfait', category: 'Service' },
+    { name: 'Main d\'oeuvre', unit_price: 8000, unit: 'heure', category: 'Service' },
+    { name: 'Déplacement', unit_price: 5000, unit: 'forfait', category: 'Frais' },
+  ],
+};
+
