@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import type { Quote, Client, QuoteItem, User } from '@/types';
 
 // Styles pour le PDF
@@ -147,6 +147,26 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: '#9ca3af',
     fontStyle: 'italic',
+  },
+  signatureSection: {
+    marginTop: 40,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  signatureBox: {
+    width: 200,
+    alignItems: 'flex-end',
+  },
+  signatureLabel: {
+    fontSize: 9,
+    color: '#6b7280',
+    marginBottom: 10,
+  },
+  signatureImage: {
+    width: 150,
+    height: 60,
+    objectFit: 'contain',
   },
 });
 
@@ -313,6 +333,22 @@ export const QuotePDF: React.FC<QuotePDFProps> = ({ quote, profile }) => {
             </View>
           )}
         </View>
+
+        {/* Signature */}
+        {profile.signature_url && (
+          <View style={styles.signatureSection}>
+            <View style={styles.signatureBox}>
+              <Text style={styles.signatureLabel}>Signature</Text>
+              <Image
+                src={profile.signature_url}
+                style={styles.signatureImage}
+              />
+              <Text style={[styles.footerText, { marginTop: 5, fontSize: 8 }]}>
+                {profile.full_name || profile.business_name}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Watermark for free plan */}
         {!isPro && (

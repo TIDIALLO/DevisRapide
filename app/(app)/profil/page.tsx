@@ -9,7 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Crown, Upload, Save } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { SignatureCanvas } from '@/components/signature/signature-canvas';
+import { Crown, Upload, Save, PenTool } from 'lucide-react';
 import type { User } from '@/types';
 
 export default function ProfilPage() {
@@ -20,6 +22,8 @@ export default function ProfilPage() {
   const [profile, setProfile] = useState<User | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [showSignatureDialog, setShowSignatureDialog] = useState(false);
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -48,6 +52,9 @@ export default function ProfilPage() {
         if (data.logo_url) {
           setLogoPreview(data.logo_url);
         }
+        if (data.signature_url) {
+          setSignatureDataUrl(data.signature_url);
+        }
       }
     } catch (error) {
       console.error('Erreur chargement profil:', error);
@@ -69,6 +76,43 @@ export default function ProfilPage() {
         setLogoPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSignatureSave = async (dataUrl: string) => {
+    if (!profile) return;
+
+    try {
+      // Convertir data URL en blob
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+
+      // Upload vers Supabase Storage
+      const fileName = `signature-${profile.id}-${Date.now()}.png`;
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(fileName, blob, { upsert: true, contentType: 'image/png' });
+
+      if (uploadError) throw uploadError;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('logos').getPublicUrl(fileName);
+
+      // Mettre à jour le profil avec l'URL de la signature
+      const { error } = await supabase
+        .from('users')
+        .update({ signature_url: publicUrl })
+        .eq('id', profile.id);
+
+      if (error) throw error;
+
+      setSignatureDataUrl(publicUrl);
+      setShowSignatureDialog(false);
+      alert('Signature enregistrée avec succès !');
+      await loadProfile();
+    } catch (error: any) {
+      alert('Erreur lors de l\'enregistrement de la signature: ' + error.message);
     }
   };
 
@@ -272,6 +316,33 @@ export default function ProfilPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label>Signature</Label>
+              <div className="flex items-center gap-4">
+                {signatureDataUrl && (
+                  <div className="border rounded-lg p-2 bg-white">
+                    <img
+                      src={signatureDataUrl}
+                      alt="Signature"
+                      className="h-16 object-contain"
+                    />
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowSignatureDialog(true)}
+                  className="flex-1"
+                >
+                  <PenTool className="w-4 h-4 mr-2" />
+                  {signatureDataUrl ? 'Modifier la signature' : 'Ajouter une signature'}
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500">
+                Votre signature apparaîtra automatiquement sur tous vos devis
+              </p>
+            </div>
+
             <Button onClick={handleSave} disabled={saving} size="lg" className="w-full">
               <Save className="w-4 h-4 mr-2" />
               {saving ? 'Sauvegarde...' : 'Sauvegarder les modifications'}
@@ -279,6 +350,23 @@ export default function ProfilPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog pour la signature */}
+      <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Ajouter votre signature</DialogTitle>
+            <DialogDescription>
+              Signez dans le cadre ci-dessous avec votre souris ou votre doigt. Votre signature apparaîtra sur tous vos devis.
+            </DialogDescription>
+          </DialogHeader>
+          <SignatureCanvas
+            onSave={handleSignatureSave}
+            onCancel={() => setShowSignatureDialog(false)}
+            currentSignature={signatureDataUrl}
+          />
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

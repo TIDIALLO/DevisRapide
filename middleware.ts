@@ -44,7 +44,8 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  const supabase = createServerClient(url, anonKey, {
+  // Type assertion: on a déjà vérifié que url et anonKey ne sont pas undefined
+  const supabase = createServerClient(url!, anonKey!, {
     cookies: {
       getAll() {
         return req.cookies.getAll();

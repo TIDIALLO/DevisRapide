@@ -21,7 +21,8 @@ export async function downloadQuotePdf(params: {
     quote: params.quote,
     profile: params.profile,
   });
-  const blob = await pdf(element).toBlob();
+  // Type assertion pour résoudre l'incompatibilité de types avec @react-pdf/renderer
+  const blob = await pdf(element as any).toBlob();
 
   // Si returnBlob est true, retourner le blob sans télécharger
   if (params.returnBlob) {
