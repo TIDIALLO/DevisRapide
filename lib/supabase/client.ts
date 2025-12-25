@@ -55,7 +55,9 @@ export const createClient = (): SupabaseClient<Database, 'public'> => {
     );
   }
 
-  // NOTE: on force le schéma 'public' pour éviter des types "union" non appelables sur `.from(...)`.
+  // IMPORTANT: createBrowserClient de @supabase/ssr gère AUTOMATIQUEMENT les cookies
+  // Ne pas surcharger avec une gestion manuelle qui peut causer des conflits
+  // Le client utilise automatiquement les cookies du navigateur pour la session
   return createBrowserClient<Database>(url, key) as SupabaseClient<Database, 'public'>;
 };
 

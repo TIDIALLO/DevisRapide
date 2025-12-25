@@ -66,6 +66,8 @@ export default function InscriptionPage() {
         throw new Error("Supabase n'est pas configuré. Vérifie `devisrapide/.env.local` puis redémarre `npm run dev`.");
       }
       // 1. Créer le compte auth
+      // IMPORTANT: Même si la confirmation email est activée, signUp() envoie toujours l'email
+      // si l'option est activée dans Supabase Dashboard
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -74,16 +76,49 @@ export default function InscriptionPage() {
             full_name: formData.fullName,
             phone: formData.phone,
           },
+          // Rediriger vers la page de confirmation après clic sur le lien email
+          // L'URL doit être absolue et correspondre exactement à celle configurée dans Supabase
+          emailRedirectTo: typeof window !== 'undefined' 
+            ? `${window.location.origin}/confirmation-email?email=${encodeURIComponent(formData.email)}`
+            : undefined,
         },
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        // Gérer l'erreur d'email déjà existant avec un message professionnel
+        if (authError.message?.includes('already registered') || 
+            authError.message?.includes('already exists') ||
+            authError.message?.includes('User already registered') ||
+            authError.message?.toLowerCase().includes('email')) {
+          throw new Error('📧 Cet email est déjà associé à un compte. Si vous avez déjà un compte, connectez-vous. Sinon, utilisez une autre adresse email.');
+        }
+        // Autres erreurs avec messages personnalisés
+        if (authError.message?.includes('password')) {
+          throw new Error('🔒 Le mot de passe ne respecte pas les critères de sécurité requis.');
+        }
+        if (authError.message?.includes('rate limit') || authError.message?.includes('too many')) {
+          throw new Error('⏱️ Trop de tentatives. Veuillez patienter quelques minutes avant de réessayer.');
+        }
+        throw new Error(`❌ ${authError.message || 'Une erreur est survenue lors de la création de votre compte. Veuillez réessayer.'}`);
+      }
       const userId = authData.user?.id;
       if (!userId) throw new Error('Erreur lors de la création du compte');
 
+      // Vérifier si l'email nécessite une confirmation
+      // Si l'email n'est pas confirmé, rediriger vers la page de confirmation
+      // Note: Même si la confirmation est désactivée dans Supabase, on redirige quand même
+      // pour informer l'utilisateur et permettre de renvoyer l'email si nécessaire
+      if (!authData.user?.email_confirmed_at) {
+        // L'email de confirmation devrait avoir été envoyé automatiquement par Supabase
+        // Rediriger vers la page de confirmation
+        router.push(`/confirmation-email?email=${encodeURIComponent(formData.email)}`);
+        return;
+      }
+
       // 2. Créer le profil utilisateur via fonction RPC (contourne RLS)
       // Cette fonction utilise SECURITY DEFINER pour permettre l'insertion
-      const { error: profileError } = await (supabase.rpc as any)('create_user_profile', {
+      // Utilisation de paramètres nommés pour éviter l'ambiguïté
+      const { error: profileError } = await supabase.rpc('create_user_profile', {
         p_user_id: userId,
         p_email: formData.email,
         p_phone: formData.phone,
@@ -92,7 +127,23 @@ export default function InscriptionPage() {
         p_address: formData.address || null,
       });
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        // Gérer l'erreur d'email déjà existant avec un message professionnel
+        if (profileError.message?.includes('duplicate key') || 
+            profileError.message?.includes('users_email_key') ||
+            profileError.message?.includes('users_phone_key') ||
+            profileError.message?.includes('email est déjà utilisé') ||
+            profileError.code === '23505') {
+          throw new Error('📧 Cet email ou ce numéro de téléphone est déjà associé à un compte. Si vous avez déjà un compte, connectez-vous. Sinon, utilisez une autre adresse email ou un autre numéro.');
+        }
+        // Gérer l'erreur d'ambiguïté de fonction SQL
+        if (profileError.message?.includes('could not choose') || 
+            profileError.message?.includes('ambiguous') ||
+            profileError.message?.includes('best candidate')) {
+          throw new Error('⚠️ Erreur technique temporaire. Veuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.');
+        }
+        throw new Error(`❌ ${profileError.message || 'Une erreur est survenue lors de la création de votre profil. Veuillez réessayer.'}`);
+      }
 
       // 3. Attendre que la session soit établie (nécessaire pour RLS)
       // Après signUp(), la session peut ne pas être immédiatement disponible
@@ -180,10 +231,22 @@ export default function InscriptionPage() {
         // Ne pas bloquer l'inscription si l'import du catalogue échoue
       }
 
-      // 4. Rediriger vers le dashboard
-      router.push('/dashboard');
+      // 4. Si l'email est déjà confirmé (peu probable mais possible), rediriger vers le dashboard
+      // Sinon, on a déjà redirigé vers la page de confirmation plus haut
+      if (authData.user?.email_confirmed_at) {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
-      setError(err.message || 'Une erreur est survenue');
+      // Messages d'erreur professionnels et modernes
+      const errorMessage = err.message || 'Une erreur est survenue lors de la création de votre compte.';
+      
+      // Si le message contient déjà un emoji, l'utiliser tel quel
+      if (errorMessage.includes('📧') || errorMessage.includes('🔒') || errorMessage.includes('❌') || errorMessage.includes('📱')) {
+        setError(errorMessage);
+      } else {
+        // Sinon, ajouter un emoji approprié
+        setError(`❌ ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }

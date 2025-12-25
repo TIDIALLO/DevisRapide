@@ -33,7 +33,7 @@ export async function middleware(req: NextRequest) {
   if (!isValidHttpUrl(url) || !anonKey) {
     const pathname = req.nextUrl.pathname;
     const setupRoutes = ['/', '/setup'];
-    const authRoutes = ['/connexion', '/inscription'];
+    const authRoutes = ['/connexion', '/inscription', '/confirmation-email'];
 
     // Autoriser l'accès à la landing + page setup + pages auth
     if ([...setupRoutes, ...authRoutes].includes(pathname)) {
@@ -63,7 +63,7 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getSession();
 
   // Routes publiques
-  const publicRoutes = ['/', '/setup', '/connexion', '/inscription'];
+  const publicRoutes = ['/', '/setup', '/connexion', '/inscription', '/confirmation-email'];
   const isPublicRoute = publicRoutes.includes(req.nextUrl.pathname);
 
   // Si pas de session et route protégée, rediriger vers connexion

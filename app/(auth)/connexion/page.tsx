@@ -37,26 +37,64 @@ export default function ConnexionPage() {
       if (!supabase) {
         throw new Error("Supabase n'est pas configuré. Vérifie `devisrapide/.env.local` puis redémarre `npm run dev`.");
       }
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
 
       if (signInError) {
-        // Message d'erreur plus clair pour l'email non confirmé
+        // Message d'erreur professionnel pour l'email non confirmé
         if (signInError.message?.toLowerCase().includes('email not confirmed') || 
             signInError.message?.toLowerCase().includes('email_not_confirmed')) {
-          setError('Votre email n\'est pas encore confirmé. Vérifiez votre boîte mail ou contactez l\'administrateur.');
-        } else {
-          throw signInError;
+          setError('📧 Votre email n\'est pas encore confirmé. Veuillez vérifier votre boîte de réception (et le dossier spam) et cliquer sur le lien de confirmation. Vous serez redirigé vers la page de confirmation...');
+          // Rediriger vers la page de confirmation
+          setTimeout(() => {
+            router.push(`/confirmation-email?email=${encodeURIComponent(formData.email)}`);
+          }, 2000);
+          return;
         }
+        // Message pour mauvais identifiants
+        if (signInError.message?.toLowerCase().includes('invalid') || 
+            signInError.message?.toLowerCase().includes('credentials')) {
+          setError('🔒 Email ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.');
+          return;
+        }
+        // Message pour rate limit
+        if (signInError.message?.toLowerCase().includes('rate limit') || 
+            signInError.message?.toLowerCase().includes('too many')) {
+          setError('⏱️ Trop de tentatives de connexion. Veuillez patienter quelques minutes avant de réessayer.');
+          return;
+        }
+        throw signInError;
+      }
+
+      // Vérifier si l'email est confirmé même si la connexion a réussi
+      // (au cas où la confirmation serait désactivée côté Supabase mais qu'on veut quand même la vérifier)
+      if (signInData.user && !signInData.user.email_confirmed_at) {
+        setError('📧 Votre email n\'est pas encore confirmé. Veuillez vérifier votre boîte de réception et cliquer sur le lien de confirmation.');
+        router.push(`/confirmation-email?email=${encodeURIComponent(formData.email)}`);
         return;
       }
 
+      // Attendre que la session soit bien stockée dans les cookies
+      // avant de rediriger
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Vérifier que la session est bien stockée
+      const { data: { session: finalSession } } = await supabase.auth.getSession();
+      if (!finalSession) {
+        console.error('⚠️ Session non stockée après connexion');
+        setError('⚠️ Problème de session. Veuillez réessayer.');
+        return;
+      }
+      
+      console.log('✅ Session stockée - User ID:', finalSession.user.id);
+      
       router.push('/dashboard');
       router.refresh();
     } catch (err: any) {
-      setError(err.message || 'Email ou mot de passe incorrect');
+      // Message d'erreur générique professionnel
+      setError(err.message || '❌ Une erreur est survenue lors de la connexion. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }

@@ -24,6 +24,7 @@ export default function ProfilPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [showSignatureDialog, setShowSignatureDialog] = useState(false);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [savingSignature, setSavingSignature] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -82,19 +83,77 @@ export default function ProfilPage() {
   const handleSignatureSave = async (dataUrl: string) => {
     if (!profile) return;
 
+    setSavingSignature(true);
     try {
-      // Convertir data URL en blob
+      // Convertir data URL en blob avec le bon type MIME
       const response = await fetch(dataUrl);
-      const blob = await response.blob();
+      let blob = await response.blob();
+      
+      // S'assurer que le blob a le bon type MIME (image/png)
+      // Parfois le fetch ne préserve pas le type MIME correctement
+      if (!blob.type || blob.type !== 'image/png') {
+        // Créer un nouveau blob avec le type MIME explicite
+        blob = new Blob([blob], { type: 'image/png' });
+      }
 
       // Upload vers Supabase Storage
       const fileName = `signature-${profile.id}-${Date.now()}.png`;
+      
+      // Vérifier si le bucket existe
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      
+      if (listError) {
+        console.error('Erreur liste buckets:', listError);
+      }
+      
+      const logosBucket = buckets?.find(b => b.name === 'logos');
+      
+      if (!logosBucket) {
+        throw new Error(
+          'Le bucket "logos" n\'existe pas. Veuillez le créer dans Supabase Dashboard → Storage → New bucket (nom: "logos", public: oui, types MIME autorisés: image/png, image/jpeg, image/jpg, image/gif, image/webp).'
+        );
+      }
+
+      // Upload du fichier avec le type MIME explicite
+      // Note: Si le bucket a des restrictions de types MIME, s'assurer qu'image/png est autorisé
       const { error: uploadError } = await supabase.storage
         .from('logos')
-        .upload(fileName, blob, { upsert: true, contentType: 'image/png' });
+        .upload(fileName, blob, { 
+          upsert: true, 
+          contentType: 'image/png',
+          cacheControl: '3600',
+          // Ne pas spécifier de metadata qui pourrait causer des problèmes
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Erreur upload complète:', uploadError);
+        
+        // Messages d'erreur spécifiques selon le type d'erreur
+        if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('not found')) {
+          throw new Error(
+            'Le bucket "logos" n\'existe pas. Veuillez le créer dans Supabase Dashboard → Storage.'
+          );
+        }
+        
+        if (uploadError.message?.includes('MIME type') || uploadError.message?.includes('content type') || uploadError.message?.includes('not allowed')) {
+          throw new Error(
+            'Le type de fichier n\'est pas autorisé. Veuillez vérifier que le bucket "logos" autorise le type "image/png" dans ses paramètres (Allowed MIME types).'
+          );
+        }
+        
+        if (uploadError.message?.includes('size') || uploadError.message?.includes('too large')) {
+          throw new Error(
+            'Le fichier est trop volumineux. La taille maximale autorisée est de 5 MB.'
+          );
+        }
+        
+        // Erreur générique avec le message original
+        throw new Error(
+          `Erreur lors de l'upload: ${uploadError.message || 'Erreur inconnue'}. Vérifiez que le bucket "logos" existe et que les types MIME sont correctement configurés.`
+        );
+      }
 
+      // Obtenir l'URL publique
       const {
         data: { publicUrl },
       } = supabase.storage.from('logos').getPublicUrl(fileName);
@@ -109,10 +168,31 @@ export default function ProfilPage() {
 
       setSignatureDataUrl(publicUrl);
       setShowSignatureDialog(false);
-      alert('Signature enregistrée avec succès !');
+      
+      // Message de succès plus élégant
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2';
+      successMessage.innerHTML = '✅ Signature enregistrée avec succès !';
+      document.body.appendChild(successMessage);
+      setTimeout(() => {
+        successMessage.remove();
+      }, 3000);
+      
       await loadProfile();
     } catch (error: any) {
-      alert('Erreur lors de l\'enregistrement de la signature: ' + error.message);
+      console.error('Erreur signature:', error);
+      const errorMessage = error.message || 'Une erreur est survenue lors de l\'enregistrement de la signature.';
+      
+      // Message d'erreur plus élégant
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 max-w-md';
+      errorDiv.innerHTML = `❌ ${errorMessage}`;
+      document.body.appendChild(errorDiv);
+      setTimeout(() => {
+        errorDiv.remove();
+      }, 5000);
+    } finally {
+      setSavingSignature(false);
     }
   };
 
@@ -352,19 +432,37 @@ export default function ProfilPage() {
       </div>
 
       {/* Dialog pour la signature */}
-      <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={showSignatureDialog} onOpenChange={(open) => {
+        if (!savingSignature) {
+          setShowSignatureDialog(open);
+        }
+      }}>
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Ajouter votre signature</DialogTitle>
-            <DialogDescription>
-              Signez dans le cadre ci-dessous avec votre souris ou votre doigt. Votre signature apparaîtra sur tous vos devis.
+            <DialogTitle className="text-2xl">Votre signature</DialogTitle>
+            <DialogDescription className="text-base">
+              Signez dans le cadre ci-dessous avec votre souris ou votre doigt. Votre signature apparaîtra automatiquement sur tous vos devis.
             </DialogDescription>
           </DialogHeader>
-          <SignatureCanvas
-            onSave={handleSignatureSave}
-            onCancel={() => setShowSignatureDialog(false)}
-            currentSignature={signatureDataUrl}
-          />
+          <div className="relative">
+            {savingSignature && (
+              <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 rounded-lg">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <p className="text-sm text-gray-600">Enregistrement en cours...</p>
+                </div>
+              </div>
+            )}
+            <SignatureCanvas
+              onSave={handleSignatureSave}
+              onCancel={() => {
+                if (!savingSignature) {
+                  setShowSignatureDialog(false);
+                }
+              }}
+              currentSignature={signatureDataUrl}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </AppShell>

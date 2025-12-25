@@ -92,10 +92,78 @@ export default function ClientsPage() {
 
   const handleSave = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      // Vérifier que les champs requis sont remplis
+      if (!formData.full_name || !formData.phone) {
+        alert('⚠️ Le nom complet et le téléphone sont obligatoires.');
+        return;
+      }
+
+      // 1. Vérifier et rafraîchir la session
+      // Utiliser getUser() qui force un refresh de la session depuis le serveur
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('Erreur utilisateur:', userError);
+        console.error('User:', user);
+        alert('❌ Votre session a expiré. Veuillez vous reconnecter.');
+        router.push('/connexion');
+        return;
+      }
+
+      // 2. Vérifier la session également pour s'assurer qu'elle est valide
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('Erreur session:', sessionError);
+        console.error('Session:', session);
+        // Si getUser() a réussi mais getSession() échoue, forcer un refresh
+        alert('⚠️ Problème de session détecté. Veuillez vous reconnecter.');
+        router.push('/connexion');
+        return;
+      }
+
+      // 3. Vérifier que les IDs correspondent
+      if (session.user.id !== user.id) {
+        console.error('IDs ne correspondent pas:', {
+          sessionUserId: session.user.id,
+          getUserUserId: user.id,
+        });
+        alert('❌ Erreur de session : Les identifiants ne correspondent pas. Veuillez vous reconnecter.');
+        router.push('/connexion');
+        return;
+      }
+
+      console.log('✅ Session valide - User ID:', user.id);
+      
+      // 4. Vérifier que les cookies de session sont présents
+      const cookies = document.cookie.split('; ').map(c => c.split('=')[0]);
+      const hasAuthCookie = cookies.some(c => c.includes('sb-') && c.includes('auth-token'));
+      console.log('Cookies présents:', cookies.filter(c => c.includes('sb-')));
+      console.log('Cookie auth présent:', hasAuthCookie);
+      
+      if (!hasAuthCookie) {
+        console.warn('⚠️ Aucun cookie de session Supabase détecté. La session peut ne pas être transmise correctement.');
+      }
+
+      // 4. Vérifier que la session est bien transmise à Supabase
+      // On fait une requête simple pour tester RLS (mais on ne bloque pas si ça échoue)
+      // car le test peut échouer pour d'autres raisons (table vide, etc.)
+      const { error: testError } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      if (testError) {
+        console.warn('⚠️ Test RLS:', testError.message);
+        // Si c'est une erreur RLS explicite, on avertit mais on continue quand même
+        // car l'insertion peut fonctionner même si le SELECT échoue
+        if (testError.code === '42501' || testError.code === 'PGRST301') {
+          console.warn('⚠️ Erreur RLS détectée lors du test, mais on continue quand même');
+        }
+      } else {
+        console.log('✅ Test RLS réussi - La session est correctement transmise');
+      }
 
       if (editingClient) {
         // Mise à jour
@@ -104,23 +172,71 @@ export default function ClientsPage() {
           .update(formData)
           .eq('id', editingClient.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Erreur mise à jour client:', error);
+          if (error.message?.includes('row-level security') || error.message?.includes('RLS')) {
+            throw new Error('🔒 Erreur de sécurité : Vous n\'avez pas la permission de modifier ce client.');
+          }
+          throw error;
+        }
       } else {
-        // Création
-        const { error } = await supabase
-          .from('clients')
-          .insert({
-            ...formData,
-            user_id: user.id,
-          });
+        // Création - S'assurer que user_id correspond exactement à auth.uid()
+        const clientData = {
+          user_id: user.id, // Doit correspondre à auth.uid() pour que RLS accepte
+          full_name: formData.full_name.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email?.trim() || null,
+          address: formData.address?.trim() || null,
+          notes: formData.notes?.trim() || null,
+        };
 
-        if (error) throw error;
+        console.log('Création client avec user_id:', user.id);
+        console.log('Données client:', clientData);
+        
+        // Vérifier une dernière fois la session avant l'insertion
+        const { data: { session: finalSession } } = await supabase.auth.getSession();
+        if (!finalSession || finalSession.user.id !== user.id) {
+          console.error('❌ Session invalide au moment de l\'insertion');
+          alert('❌ Votre session a expiré. Veuillez vous reconnecter.');
+          router.push('/connexion');
+          return;
+        }
+        
+        console.log('✅ Session confirmée avant insertion - User ID:', finalSession.user.id);
+        
+        const { data, error } = await supabase
+          .from('clients')
+          .insert(clientData)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Erreur création client:', error);
+          console.error('Détails:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          });
+          
+          // Messages d'erreur plus spécifiques
+          if (error.message?.includes('row-level security') || error.message?.includes('RLS')) {
+            throw new Error('🔒 Erreur de sécurité : Votre session n\'est pas valide. Veuillez vous déconnecter et vous reconnecter.');
+          }
+          if (error.message?.includes('duplicate') || error.code === '23505') {
+            throw new Error('📧 Ce client existe déjà (même nom ou téléphone).');
+          }
+          throw error;
+        }
+
+        console.log('Client créé avec succès:', data);
       }
 
       setDialogOpen(false);
       await loadClients();
     } catch (error: any) {
-      alert('Erreur: ' + error.message);
+      console.error('Erreur complète:', error);
+      alert(`❌ Erreur: ${error.message || 'Une erreur est survenue lors de la sauvegarde du client.'}`);
     }
   };
 
