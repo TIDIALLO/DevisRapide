@@ -25,26 +25,31 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
-  // Statistiques du mois
+  // Statistiques du mois - Requêtes optimisées en parallèle
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const { data: quotes } = await supabase
-    .from('quotes')
-    .select('*')
-    .eq('user_id', user.id)
-    .gte('date', startOfMonth.toISOString());
+  // Requêtes en parallèle pour améliorer les performances
+  const [quotesResult, clientsResult, catalogResult] = await Promise.all([
+    supabase
+      .from('quotes')
+      .select('id, total, status, date', { count: 'exact' })
+      .eq('user_id', user.id)
+      .gte('date', startOfMonth.toISOString()),
+    supabase
+      .from('clients')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id),
+    supabase
+      .from('catalog_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id),
+  ]);
 
-  const { count: clientsCount } = await supabase
-    .from('clients')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id);
-
-  const { count: catalogCount } = await supabase
-    .from('catalog_items')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id);
+  const quotes = quotesResult.data || [];
+  const clientsCount = clientsResult.count || 0;
+  const catalogCount = catalogResult.count || 0;
 
   // Calculs
   const thisMonthQuotes = quotes?.length || 0;
@@ -52,10 +57,10 @@ export default async function DashboardPage() {
   const acceptedQuotes = quotes?.filter((q) => q.status === 'accepted').length || 0;
   const acceptanceRate = thisMonthQuotes > 0 ? (acceptedQuotes / thisMonthQuotes) * 100 : 0;
 
-  // Devis récents
+  // Devis récents - Requête optimisée (seulement les colonnes nécessaires)
   const { data: recentQuotes } = await supabase
     .from('quotes')
-    .select('*, client:clients(*)')
+    .select('id, quote_number, total, status, created_at, valid_until, client:clients(id, full_name)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(5);

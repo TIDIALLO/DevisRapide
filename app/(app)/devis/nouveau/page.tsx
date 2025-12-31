@@ -40,6 +40,8 @@ export default function NewQuotePage() {
   
   // Form state
   const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [documentType, setDocumentType] = useState<'devis' | 'facture'>('devis');
+  const [serviceDescription, setServiceDescription] = useState('');
   const [quoteDate, setQuoteDate] = useState(new Date().toISOString().split('T')[0]);
   const [validUntil, setValidUntil] = useState(() => {
     const date = new Date();
@@ -505,6 +507,8 @@ export default function NewQuotePage() {
         client_id: selectedClientId,
         quote_number: quoteNumber,
         status: status,
+        document_type: documentType,
+        service_description: serviceDescription || null,
         date: quoteDate,
         valid_until: validUntil,
         subtotal: subtotal,
@@ -653,7 +657,7 @@ Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
         {/* Client Selection */}
         <Card>
           <CardHeader>
-            <CardTitle>1. Client</CardTitle>
+            <CardTitle>1. Client et Type de document</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
@@ -674,9 +678,34 @@ Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
               </Button>
             </div>
 
+            <div className="space-y-2">
+              <Label>Type de document</Label>
+              <Select value={documentType} onValueChange={(value: 'devis' | 'facture') => setDocumentType(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="devis">Devis (avant service)</SelectItem>
+                  <SelectItem value="facture">Facture (après service)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Service fourni</Label>
+              <Input
+                placeholder="Ex: Création d'une application web, Peinture d'une maison, Réparation véhicule..."
+                value={serviceDescription}
+                onChange={(e) => setServiceDescription(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Décrivez le service ou le projet pour lequel ce document est établi
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Date du devis</Label>
+                <Label>Date du {documentType === 'devis' ? 'devis' : 'facture'}</Label>
                 <Input
                   type="date"
                   value={quoteDate}
@@ -684,7 +713,7 @@ Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
                 />
               </div>
               <div className="space-y-2">
-                <Label>Valide jusqu'au</Label>
+                <Label>{documentType === 'devis' ? 'Valide jusqu\'au' : 'Date d\'échéance'}</Label>
                 <Input
                   type="date"
                   value={validUntil}

@@ -59,24 +59,34 @@ export default function QuoteDetailPage() {
         return;
       }
 
-      // Load profile
-      const { data: profileData } = await supabase
+      // Load profile - Requête optimisée (seulement les colonnes nécessaires)
+      const { data: profileData, error: profileError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, full_name, business_name, address, phone, email, ninea, logo_url, signature_url, plan, plan_expires_at')
         .eq('id', user.id)
         .single();
 
+      if (profileError) {
+        console.error('Erreur chargement profil:', profileError);
+      }
+
       if (profileData) {
+        console.log('[Debug] Profil chargé:', {
+          id: profileData.id,
+          has_logo_url: !!profileData.logo_url,
+          logo_url: profileData.logo_url,
+          has_signature_url: !!profileData.signature_url,
+        });
         setProfile(profileData);
       }
 
-      // Load quote with relations
+      // Load quote with relations - Requête optimisée
       const { data, error } = await supabase
         .from('quotes')
         .select(`
           *,
-          client:clients(*),
-          quote_items(*)
+          client:clients(id, full_name, phone, email, address),
+          quote_items(id, name, description, quantity, unit, unit_price, amount, order)
         `)
         .eq('id', id)
         .eq('user_id', user.id)
@@ -229,24 +239,24 @@ export default function QuoteDetailPage() {
         {/* Actions */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={handleShareWhatsApp} variant="default" disabled={!quote.client.phone}>
-                <MessageCircle className="w-4 h-4 mr-2" />
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handleShareWhatsApp} variant="default" disabled={!quote.client.phone} className="font-semibold">
+                <MessageCircle className="w-5 h-5 mr-2" />
                 Envoyer WhatsApp
               </Button>
               {quote.client.email && (
-                <Button onClick={handleShareEmail} variant="default" className="bg-blue-600 hover:bg-blue-700">
-                  <Mail className="w-4 h-4 mr-2" />
+                <Button onClick={handleShareEmail} variant="default" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg">
+                  <Mail className="w-5 h-5 mr-2" />
                   Envoyer Email
                 </Button>
               )}
-              <Button variant="outline" onClick={handleDownloadPdf} disabled={!profile}>
-                <Download className="w-4 h-4 mr-2" />
+              <Button variant="outline" onClick={handleDownloadPdf} disabled={!profile} className="font-semibold border-2">
+                <Download className="w-5 h-5 mr-2" />
                 Export PDF
               </Button>
               {quote.status === 'draft' && (
-                <Button variant="outline" disabled>
-                  <Edit className="w-4 h-4 mr-2" />
+                <Button variant="outline" disabled className="font-semibold border-2">
+                  <Edit className="w-5 h-5 mr-2" />
                   Modifier
                 </Button>
               )}
@@ -298,10 +308,22 @@ export default function QuoteDetailPage() {
           </CardHeader>
 
           <CardContent className="p-6 space-y-6">
+            {/* Document Type & Service */}
+            <div className="text-center border-b-2 border-primary pb-4">
+              <h2 className="text-3xl font-bold text-primary mb-2 tracking-wider">
+                {quote.document_type === 'facture' ? 'FACTURE' : 'DEVIS'}
+              </h2>
+              {quote.service_description && (
+                <p className="text-lg text-gray-700 italic">{quote.service_description}</p>
+              )}
+            </div>
+
             {/* Client & Dates */}
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold text-sm text-gray-500 mb-2">DEVIS POUR:</h3>
+                <h3 className="font-semibold text-sm text-gray-500 mb-2">
+                  {quote.document_type === 'facture' ? 'FACTURÉ À:' : 'DEVIS POUR:'}
+                </h3>
                 <div className="space-y-1">
                   <p className="font-semibold text-lg">{quote.client.full_name}</p>
                   <p className="text-sm text-gray-600">{quote.client.phone}</p>
@@ -319,73 +341,89 @@ export default function QuoteDetailPage() {
                     <span className="font-semibold">Date:</span> {format(new Date(quote.date), 'dd/MM/yyyy')}
                   </p>
                   <p className="text-sm">
-                    <span className="font-semibold">Valable jusqu'au:</span> {format(new Date(quote.valid_until), 'dd/MM/yyyy')}
+                    <span className="font-semibold">
+                      {quote.document_type === 'facture' ? 'Échéance:' : 'Valable jusqu\'au:'}
+                    </span>{' '}
+                    {format(new Date(quote.valid_until), 'dd/MM/yyyy')}
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Items Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b-2 border-gray-300">
-                    <th className="text-left py-3 px-2">Description</th>
-                    <th className="text-center py-3 px-2 w-20">Qté</th>
-                    <th className="text-center py-3 px-2 w-24">Unité</th>
-                    <th className="text-right py-3 px-2 w-32">Prix Unit.</th>
-                    <th className="text-right py-3 px-2 w-32">Montant</th>
+                  <tr className="bg-gray-100 border-b-2 border-gray-300">
+                    <th className="text-left py-4 px-4 font-bold text-gray-900 text-sm uppercase tracking-wide">Description</th>
+                    <th className="text-center py-4 px-4 font-bold text-gray-900 text-sm uppercase tracking-wide w-20">Qté</th>
+                    <th className="text-center py-4 px-4 font-bold text-gray-900 text-sm uppercase tracking-wide w-24">Unité</th>
+                    <th className="text-right py-4 px-4 font-bold text-gray-900 text-sm uppercase tracking-wide w-32">Prix Unit.</th>
+                    <th className="text-right py-4 px-4 font-bold text-gray-900 text-sm uppercase tracking-wide w-32">Montant</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {quote.quote_items.map((item, index) => (
-                    <tr key={item.id} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                      <td className="py-3 px-2">
-                        <div className="font-medium">{item.name}</div>
-                        {item.description && (
-                          <div className="text-sm text-gray-600">{item.description}</div>
-                        )}
-                      </td>
-                      <td className="text-center py-3 px-2">{item.quantity}</td>
-                      <td className="text-center py-3 px-2">{item.unit}</td>
-                      <td className="text-right py-3 px-2">{formatCurrency(item.unit_price)}</td>
-                      <td className="text-right py-3 px-2 font-semibold">
-                        {formatCurrency(item.amount)}
+                  {quote.quote_items && quote.quote_items.length > 0 ? (
+                    quote.quote_items.map((item, index) => (
+                      <tr 
+                        key={item.id} 
+                        className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                      >
+                        <td className="py-4 px-4">
+                          <div className="font-semibold text-gray-900 text-base">{item.name}</div>
+                          {item.description && (
+                            <div className="text-sm text-gray-600 mt-1">{item.description}</div>
+                          )}
+                        </td>
+                        <td className="text-center py-4 px-4 text-gray-900 font-medium">{item.quantity}</td>
+                        <td className="text-center py-4 px-4 text-gray-700">{item.unit}</td>
+                        <td className="text-right py-4 px-4 text-gray-900 font-medium">{formatCurrency(item.unit_price)}</td>
+                        <td className="text-right py-4 px-4 font-bold text-gray-900 text-base">
+                          {formatCurrency(item.amount)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-gray-500">
+                        Aucun article ajouté
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
 
             {/* Totals */}
-            <div className="border-t pt-4">
+            <div className="border-t-2 border-gray-300 pt-6 mt-6">
               <div className="flex justify-end">
-                <div className="w-full md:w-80 space-y-2">
-                  <div className="flex justify-between">
-                    <span>Sous-total:</span>
-                    <span className="font-semibold">{formatCurrency(Number(quote.subtotal))}</span>
-                  </div>
-                  
-                  {quote.discount_amount > 0 && (
-                    <div className="flex justify-between text-red-600">
-                      <span>
-                        Remise {quote.discount_type === 'percent' ? `(${quote.discount_value}%)` : ''}:
-                      </span>
-                      <span className="font-semibold">- {formatCurrency(Number(quote.discount_amount))}</span>
+                <div className="w-full md:w-96 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-base">
+                      <span className="text-gray-700 font-medium">Sous-total:</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(Number(quote.subtotal))}</span>
                     </div>
-                  )}
                   
-                  {quote.tax_amount > 0 && (
-                    <div className="flex justify-between">
-                      <span>TVA ({quote.tax_rate}%):</span>
-                      <span className="font-semibold">+ {formatCurrency(Number(quote.tax_amount))}</span>
+                    {quote.discount_amount > 0 && (
+                      <div className="flex justify-between text-base text-red-600">
+                        <span className="font-medium">
+                          Remise {quote.discount_type === 'percent' ? `(${quote.discount_value}%)` : ''}:
+                        </span>
+                        <span className="font-semibold">- {formatCurrency(Number(quote.discount_amount))}</span>
+                      </div>
+                    )}
+                    
+                    {quote.tax_amount > 0 && (
+                      <div className="flex justify-between text-base">
+                        <span className="text-gray-700 font-medium">TVA ({quote.tax_rate}%):</span>
+                        <span className="font-semibold text-gray-900">+ {formatCurrency(Number(quote.tax_amount))}</span>
+                      </div>
+                    )}
+                  
+                    <div className="flex justify-between text-2xl font-bold text-primary border-t-2 border-gray-300 pt-4 mt-4">
+                      <span>TOTAL TTC:</span>
+                      <span className="text-primary">{formatCurrency(Number(quote.total))}</span>
                     </div>
-                  )}
-                  
-                  <div className="flex justify-between text-2xl font-bold text-primary border-t pt-2">
-                    <span>TOTAL TTC:</span>
-                    <span>{formatCurrency(Number(quote.total))}</span>
                   </div>
                 </div>
               </div>
@@ -412,11 +450,12 @@ export default function QuoteDetailPage() {
             {/* Watermark */}
             {!isPro && (
               <div className="text-center text-sm text-gray-400 italic border-t pt-4">
-                Généré avec DevisRapide - www.devisrapide.sn
+                Généré avec DevisRapide - www.devisrapide.com
               </div>
             )}
           </CardContent>
         </Card>
+
       </div>
     </AppShell>
   );

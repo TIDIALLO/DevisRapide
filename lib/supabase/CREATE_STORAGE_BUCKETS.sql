@@ -22,6 +22,17 @@
 -- ============================================
 -- POLITIQUES RLS POUR LE BUCKET "logos"
 -- ============================================
+-- 
+-- Patterns de noms de fichiers utilisés dans l'application :
+-- - Logo : {user_id}-{timestamp}.{ext} (ex: abc123-1234567890.png)
+-- - Signature : signature-{user_id}-{timestamp}.png (ex: signature-abc123-1234567890.png)
+--
+-- Les politiques permettent :
+-- - INSERT : Les utilisateurs authentifiés peuvent uploader leurs propres fichiers
+-- - SELECT : Tout le monde peut lire les fichiers (bucket public)
+-- - UPDATE : Les utilisateurs peuvent modifier leurs propres fichiers
+-- - DELETE : Les utilisateurs peuvent supprimer leurs propres fichiers
+-- ============================================
 
 -- Supprimer les politiques existantes si elles existent
 DROP POLICY IF EXISTS "Users can upload their own logos" ON storage.objects;
@@ -31,14 +42,16 @@ DROP POLICY IF EXISTS "Users can delete their own logos" ON storage.objects;
 DROP POLICY IF EXISTS "Public can read logos" ON storage.objects;
 
 -- Politique INSERT : Les utilisateurs authentifiés peuvent uploader leurs logos/signatures
+-- Les fichiers doivent commencer par l'ID de l'utilisateur ou par "signature-" suivi de l'ID
 CREATE POLICY "Users can upload their own logos" ON storage.objects
   FOR INSERT
   TO authenticated
   WITH CHECK (
     bucket_id = 'logos'
-    AND (storage.foldername(name))[1] = auth.uid()::text
-    OR name LIKE 'signature-%'
-    OR name LIKE auth.uid()::text || '-%'
+    AND (
+      name LIKE auth.uid()::text || '-%'
+      OR name LIKE 'signature-' || auth.uid()::text || '-%'
+    )
   );
 
 -- Politique SELECT : Tout le monde peut lire les logos (public)
@@ -54,17 +67,15 @@ CREATE POLICY "Users can update their own logos" ON storage.objects
   USING (
     bucket_id = 'logos'
     AND (
-      (storage.foldername(name))[1] = auth.uid()::text
+      name LIKE auth.uid()::text || '-%'
       OR name LIKE 'signature-' || auth.uid()::text || '-%'
-      OR name LIKE auth.uid()::text || '-%'
     )
   )
   WITH CHECK (
     bucket_id = 'logos'
     AND (
-      (storage.foldername(name))[1] = auth.uid()::text
+      name LIKE auth.uid()::text || '-%'
       OR name LIKE 'signature-' || auth.uid()::text || '-%'
-      OR name LIKE auth.uid()::text || '-%'
     )
   );
 
@@ -75,9 +86,8 @@ CREATE POLICY "Users can delete their own logos" ON storage.objects
   USING (
     bucket_id = 'logos'
     AND (
-      (storage.foldername(name))[1] = auth.uid()::text
+      name LIKE auth.uid()::text || '-%'
       OR name LIKE 'signature-' || auth.uid()::text || '-%'
-      OR name LIKE auth.uid()::text || '-%'
     )
   );
 

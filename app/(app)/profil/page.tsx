@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
@@ -99,20 +100,9 @@ export default function ProfilPage() {
       // Upload vers Supabase Storage
       const fileName = `signature-${profile.id}-${Date.now()}.png`;
       
-      // Vérifier si le bucket existe
-      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-      
-      if (listError) {
-        console.error('Erreur liste buckets:', listError);
-      }
-      
-      const logosBucket = buckets?.find(b => b.name === 'logos');
-      
-      if (!logosBucket) {
-        throw new Error(
-          'Le bucket "logos" n\'existe pas. Veuillez le créer dans Supabase Dashboard → Storage → New bucket (nom: "logos", public: oui, types MIME autorisés: image/png, image/jpeg, image/jpg, image/gif, image/webp).'
-        );
-      }
+      // Note: On essaie directement l'upload sans vérifier l'existence du bucket
+      // car listBuckets() peut échouer ou ne pas retourner le bucket même s'il existe
+      // Si le bucket n'existe vraiment pas, l'upload échouera avec un message d'erreur clair
 
       // Upload du fichier avec le type MIME explicite
       // Note: Si le bucket a des restrictions de types MIME, s'assurer qu'image/png est autorisé
@@ -205,6 +195,10 @@ export default function ProfilPage() {
 
       // Upload logo si changé
       if (logoFile) {
+        // Note: On essaie directement l'upload sans vérifier l'existence du bucket
+        // car listBuckets() peut échouer même si le bucket existe (problème de permissions)
+        // Si le bucket n'existe pas, l'upload échouera avec un message d'erreur clair
+        
         const fileExt = logoFile.name.split('.').pop();
         const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
         const { error: uploadError, data } = await supabase.storage
@@ -284,9 +278,11 @@ export default function ProfilPage() {
                 </CardDescription>
               </div>
               {!isPro && (
-                <Button size="lg" variant="default">
-                  Passer PRO - 5,000 FCFA/mois
-                </Button>
+                <Link href="/upgrade">
+                  <Button size="lg" variant="default">
+                    Passer PRO - 5,000 FCFA/mois
+                  </Button>
+                </Link>
               )}
             </div>
           </CardHeader>

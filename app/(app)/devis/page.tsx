@@ -48,11 +48,13 @@ export default function DevisPage() {
         return;
       }
 
+      // Requête optimisée - seulement les colonnes nécessaires
       const { data } = await supabase
         .from('quotes')
-        .select('*, client:clients(*)')
+        .select('id, quote_number, status, total, created_at, valid_until, document_type, client:clients(id, full_name)')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100); // Limiter à 100 devis pour améliorer les performances
 
       if (data) {
         setQuotes(data as QuoteWithClient[]);

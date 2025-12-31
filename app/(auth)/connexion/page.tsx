@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMemo, useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,15 +12,26 @@ import { SupabaseSetupCard } from '@/components/setup/supabase-setup-card';
 
 export default function ConnexionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const configured = isSupabaseConfigured();
   const supabase = useMemo(() => (configured ? createClient() : null), [configured]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+
+  // Vérifier si on vient d'une réinitialisation de mot de passe réussie
+  useEffect(() => {
+    if (searchParams.get('password_reset') === 'success') {
+      setSuccess('✅ Votre mot de passe a été modifié avec succès. Vous pouvez maintenant vous connecter.');
+      // Retirer le paramètre de l'URL
+      router.replace('/connexion', { scroll: false });
+    }
+  }, [searchParams, router]);
 
   // Important: si Supabase n'est pas configuré, on affiche une page de setup
   // au lieu de crasher (erreur visible sur la capture).
@@ -111,6 +122,11 @@ export default function ConnexionPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-800 p-3 rounded-md text-sm">
+                {success}
+              </div>
+            )}
             {error && (
               <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
                 {error}
@@ -130,7 +146,15 @@ export default function ConnexionPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Mot de passe</Label>
+                <Link 
+                  href="/mot-de-passe-oublie" 
+                  className="text-xs text-primary hover:underline"
+                >
+                  Mot de passe oublié ?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"

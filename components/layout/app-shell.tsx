@@ -16,6 +16,7 @@ import {
   Mic,
 } from 'lucide-react';
 import { useState } from 'react';
+import { DevisRapideLogo } from '@/components/ui/logo';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -43,8 +44,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile Header */}
       <header className="lg:hidden bg-white border-b sticky top-0 z-40">
         <div className="flex items-center justify-between p-4">
-          <Link href="/dashboard" className="text-xl font-bold text-primary">
-            DevisRapide
+          <Link href="/dashboard">
+            <DevisRapideLogo size="sm" />
           </Link>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -92,8 +93,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex flex-col flex-grow bg-white border-r overflow-y-auto">
           <div className="flex items-center flex-shrink-0 px-6 py-6 border-b">
-            <Link href="/dashboard" className="text-2xl font-bold text-primary">
-              DevisRapide
+            <Link href="/dashboard">
+              <DevisRapideLogo size="md" />
             </Link>
           </div>
           <nav className="flex-1 px-4 py-6 space-y-2">
