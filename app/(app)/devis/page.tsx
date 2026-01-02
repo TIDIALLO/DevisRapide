@@ -13,6 +13,7 @@ import { Plus, Search, FileText, Eye, Copy, Download } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useAlertDialog } from '@/components/ui/alert-dialog';
 import type { Quote, Client } from '@/types';
 
 type QuoteWithClient = Quote & { client: Client };
@@ -28,6 +29,7 @@ const STATUS_CONFIG = {
 export default function DevisPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { showAlert, AlertDialog } = useAlertDialog();
   const [quotes, setQuotes] = useState<QuoteWithClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,7 +124,7 @@ export default function DevisPage() {
       await loadQuotes();
       router.push(`/devis/${newQuote.id}`);
     } catch (error: any) {
-      alert('Erreur: ' + error.message);
+      showAlert('Erreur: ' + error.message, 'Erreur');
     }
   };
 
@@ -272,6 +274,7 @@ export default function DevisPage() {
             </CardContent>
           </Card>
         )}
+        {AlertDialog}
       </div>
     </AppShell>
   );

@@ -20,11 +20,13 @@ import {
 import { Plus, Search, Phone, Mail, MapPin, Edit, Trash2, User } from 'lucide-react';
 import type { Client } from '@/types';
 import { useToast } from '@/components/ui/toast';
+import { useAlertDialog } from '@/components/ui/alert-dialog';
 
 export default function ClientsPage() {
   const router = useRouter();
   const supabase = createClient();
   const { addToast } = useToast();
+  const { showConfirm, AlertDialog } = useAlertDialog();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -304,30 +306,35 @@ export default function ClientsPage() {
   };
 
   const handleDelete = async (client: Client) => {
-    if (!confirm(`Supprimer le client ${client.full_name} ?`)) return;
+    showConfirm(
+      `Supprimer le client ${client.full_name} ?`,
+      async () => {
+        try {
+          const { error } = await supabase
+            .from('clients')
+            .delete()
+            .eq('id', client.id);
 
-    try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', client.id);
-
-      if (error) throw error;
-      
-      addToast({
-        type: 'success',
-        title: 'Client supprimé',
-        description: `${client.full_name} a été supprimé.`,
-      });
-      
-      await loadClients();
-    } catch (error: any) {
-      addToast({
-        type: 'error',
-        title: 'Erreur de suppression',
-        description: error.message || 'Une erreur est survenue lors de la suppression.',
-      });
-    }
+          if (error) throw error;
+          
+          addToast({
+            type: 'success',
+            title: 'Client supprimé',
+            description: `${client.full_name} a été supprimé.`,
+          });
+          
+          await loadClients();
+        } catch (error: any) {
+          addToast({
+            type: 'error',
+            title: 'Erreur de suppression',
+            description: error.message || 'Une erreur est survenue lors de la suppression.',
+          });
+        }
+      },
+      'Supprimer le client',
+      'destructive'
+    );
   };
 
   const filteredClients = clients.filter((client) =>
@@ -523,6 +530,7 @@ export default function ClientsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {AlertDialog}
     </AppShell>
   );
 }

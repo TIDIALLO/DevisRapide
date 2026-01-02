@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Plus, Search, Edit, Trash2, Package, Copy } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { useAlertDialog } from '@/components/ui/alert-dialog';
 import type { CatalogItem } from '@/types';
 
 const UNITS = [
@@ -40,6 +41,7 @@ const CATEGORIES = ['Matériaux', 'Main d\'oeuvre', 'Équipement', 'Service', 'F
 export default function CataloguePage() {
   const router = useRouter();
   const supabase = createClient();
+  const { showAlert, showConfirm, AlertDialog } = useAlertDialog();
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,7 +146,7 @@ export default function CataloguePage() {
       setDialogOpen(false);
       await loadCatalog();
     } catch (error: any) {
-      alert('Erreur: ' + error.message);
+      showAlert('Erreur: ' + error.message, 'Erreur');
     }
   };
 
@@ -169,24 +171,29 @@ export default function CataloguePage() {
       if (error) throw error;
       await loadCatalog();
     } catch (error: any) {
-      alert('Erreur: ' + error.message);
+      showAlert('Erreur: ' + error.message, 'Erreur');
     }
   };
 
   const handleDelete = async (item: CatalogItem) => {
-    if (!confirm(`Supprimer "${item.name}" ?`)) return;
+    showConfirm(
+      `Supprimer "${item.name}" ?`,
+      async () => {
+        try {
+          const { error } = await supabase
+            .from('catalog_items')
+            .delete()
+            .eq('id', item.id);
 
-    try {
-      const { error } = await supabase
-        .from('catalog_items')
-        .delete()
-        .eq('id', item.id);
-
-      if (error) throw error;
-      await loadCatalog();
-    } catch (error: any) {
-      alert('Erreur: ' + error.message);
-    }
+          if (error) throw error;
+          await loadCatalog();
+        } catch (error: any) {
+          showAlert('Erreur: ' + error.message, 'Erreur');
+        }
+      },
+      'Supprimer l\'article',
+      'destructive'
+    );
   };
 
   const filteredItems = items.filter((item) => {
@@ -443,6 +450,7 @@ export default function CataloguePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {AlertDialog}
     </AppShell>
   );
 }

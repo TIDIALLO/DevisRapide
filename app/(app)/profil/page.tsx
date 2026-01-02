@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useAlertDialog } from '@/components/ui/alert-dialog';
 import { SignatureCanvas } from '@/components/signature/signature-canvas';
 import { Crown, Upload, Save, PenTool } from 'lucide-react';
 import type { User } from '@/types';
@@ -18,6 +19,7 @@ import type { User } from '@/types';
 export default function ProfilPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { showAlert, AlertDialog } = useAlertDialog();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<User | null>(null);
@@ -69,7 +71,7 @@ export default function ProfilPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        alert('Le fichier est trop volumineux (max 2MB)');
+        showAlert('Le fichier est trop volumineux (max 2MB)', 'Fichier trop volumineux');
         return;
       }
       setLogoFile(file);
@@ -227,10 +229,10 @@ export default function ProfilPage() {
 
       if (error) throw error;
 
-      alert('Profil sauvegardé avec succès !');
+      showAlert('Profil sauvegardé avec succès !', 'Succès');
       await loadProfile();
     } catch (error: any) {
-      alert('Erreur: ' + error.message);
+      showAlert('Erreur: ' + error.message, 'Erreur');
     } finally {
       setSaving(false);
     }
@@ -461,6 +463,7 @@ export default function ProfilPage() {
           </div>
         </DialogContent>
       </Dialog>
+      {AlertDialog}
     </AppShell>
   );
 }

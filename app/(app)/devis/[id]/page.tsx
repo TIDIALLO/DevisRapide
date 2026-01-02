@@ -13,6 +13,7 @@ import { formatCurrency } from '@/lib/utils';
 import { downloadQuotePdf } from '@/lib/pdf/export';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useAlertDialog } from '@/components/ui/alert-dialog';
 import type { Quote, Client, QuoteItem, User } from '@/types';
 
 type QuoteWithRelations = Quote & {
@@ -32,6 +33,7 @@ export default function QuoteDetailPage() {
   const router = useRouter();
   const params = useParams();
   const supabase = createClient();
+  const { showAlert, showConfirm, AlertDialog } = useAlertDialog();
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<QuoteWithRelations | null>(null);
   const [profile, setProfile] = useState<User | null>(null);
@@ -101,7 +103,7 @@ export default function QuoteDetailPage() {
       }
     } catch (error) {
       console.error('Erreur chargement devis:', error);
-      alert('Devis introuvable');
+      showAlert('Devis introuvable', 'Erreur');
       router.push('/devis');
     } finally {
       setLoading(false);
@@ -127,25 +129,32 @@ export default function QuoteDetailPage() {
 
       await loadQuote(quote.id);
     } catch (error: any) {
-      alert('Erreur: ' + error.message);
+      showAlert('Erreur: ' + error.message, 'Erreur');
     }
   };
 
   const handleDelete = async () => {
-    if (!quote || !confirm('Supprimer ce devis définitivement ?')) return;
+    if (!quote) return;
+    
+    showConfirm(
+      'Supprimer ce devis définitivement ?',
+      async () => {
+        try {
+          const { error } = await supabase
+            .from('quotes')
+            .delete()
+            .eq('id', quote.id);
 
-    try {
-      const { error } = await supabase
-        .from('quotes')
-        .delete()
-        .eq('id', quote.id);
+          if (error) throw error;
 
-      if (error) throw error;
-
-      router.push('/devis');
-    } catch (error: any) {
-      alert('Erreur: ' + error.message);
-    }
+          router.push('/devis');
+        } catch (error: any) {
+          showAlert('Erreur: ' + error.message, 'Erreur');
+        }
+      },
+      'Supprimer le devis',
+      'destructive'
+    );
   };
 
   const handleShareWhatsApp = async () => {
@@ -164,7 +173,7 @@ export default function QuoteDetailPage() {
         await handleStatusChange('sent');
       }
     } catch (error: any) {
-      alert('Erreur lors de l\'envoi WhatsApp: ' + (error.message || 'Erreur inconnue'));
+      showAlert('Erreur lors de l\'envoi WhatsApp: ' + (error.message || 'Erreur inconnue'), 'Erreur');
     }
   };
 
@@ -195,7 +204,7 @@ export default function QuoteDetailPage() {
         filename: `${quote.quote_number}.pdf`,
       });
     } catch (e: any) {
-      alert(e?.message || 'Erreur lors de la génération du PDF');
+      showAlert(e?.message || 'Erreur lors de la génération du PDF', 'Erreur');
     }
   };
 
@@ -455,7 +464,7 @@ export default function QuoteDetailPage() {
             )}
           </CardContent>
         </Card>
-
+        {AlertDialog}
       </div>
     </AppShell>
   );

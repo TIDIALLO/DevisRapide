@@ -8,6 +8,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PaymentModal } from '@/components/payment/payment-modal';
+import { useAlertDialog } from '@/components/ui/alert-dialog';
 import { Crown, Check, ArrowLeft } from 'lucide-react';
 import { useEffect } from 'react';
 
@@ -25,6 +26,7 @@ const PRO_PRICE = 4900; // FCFA
 export default function UpgradePage() {
   const router = useRouter();
   const supabase = createClient();
+  const { showAlert, AlertDialog } = useAlertDialog();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -198,7 +200,7 @@ export default function UpgradePage() {
                   }
                 } catch (error: any) {
                   console.error('Erreur:', error);
-                  alert(error.message || 'Une erreur est survenue. Veuillez réessayer.');
+                  showAlert(error.message || 'Une erreur est survenue. Veuillez réessayer.', 'Erreur');
                   setLoading(false);
                 }
               }}
@@ -285,6 +287,7 @@ export default function UpgradePage() {
             setPaymentModalOpen(false);
           }}
         />
+        {AlertDialog}
       </div>
     </AppShell>
   );

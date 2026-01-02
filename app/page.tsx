@@ -599,7 +599,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-gray-200 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-10 text-center text-sm text-gray-600">
-          <p>© 2024 DevisRapide. Fait avec soin pour les artisans sénégalais.</p>
+          <p>© 2026 DevisRapide. Fait avec soin pour les artisans sénégalais.</p>
         </div>
       </footer>
     </div>
