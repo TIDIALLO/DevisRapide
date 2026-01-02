@@ -280,7 +280,7 @@ export default function ProfilPage() {
               {!isPro && (
                 <Link href="/upgrade">
                   <Button size="lg" variant="default">
-                    Passer PRO - 5,000 FCFA/mois
+                    Passer PRO - 4,900 FCFA/mois
                   </Button>
                 </Link>
               )}

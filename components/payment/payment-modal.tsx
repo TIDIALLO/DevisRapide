@@ -473,7 +473,7 @@ export function PaymentModal({
                     }}
                     style={{ willChange: 'transform' }}
                   >
-                    {method.customIcon || method.icon}
+                    {method.icon}
                     <motion.div 
                       className="absolute inset-0 rounded-xl bg-white/20"
                       initial={{ opacity: 0 }}

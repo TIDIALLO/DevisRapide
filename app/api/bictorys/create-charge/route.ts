@@ -81,6 +81,10 @@ export async function POST(request: NextRequest) {
     const chargeResponse = await createCharge(chargeRequest);
 
     // Enregistrer la transaction dans la base de données
+    // Mapper le PaymentType vers les valeurs attendues par la base de données
+    const dbPaymentType = paymentType === 'orange_money' ? 'orange_money' : 
+                         paymentType === 'wave' ? 'wave' : 'card';
+    
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .insert({
@@ -89,7 +93,7 @@ export async function POST(request: NextRequest) {
         bictorys_charge_id: chargeResponse.id,
         amount: Number(quote.total),
         currency: 'XOF',
-        payment_type: (paymentType as PaymentType) || 'card', // Par défaut card si non spécifié
+        payment_type: dbPaymentType,
         status: 'pending',
         success_redirect_url: successUrl,
         error_redirect_url: errorUrl,

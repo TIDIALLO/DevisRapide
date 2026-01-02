@@ -170,7 +170,7 @@ export async function createCharge(
 
   if (!response.ok) {
     const error = data as BictorysError;
-    const errorMessage = error?.error?.message || error?.message || error?.details || `Erreur Bictorys: ${response.statusText}`;
+    const errorMessage = error?.error?.message || (error as any)?.message || (error as any)?.details || `Erreur Bictorys: ${response.statusText}`;
     console.error('[Bictorys] Erreur détaillée:', {
       status: response.status,
       statusText: response.statusText,

@@ -20,7 +20,7 @@ const PRO_FEATURES = [
   'Support WhatsApp prioritaire',
 ];
 
-const PRO_PRICE = 5000; // FCFA
+const PRO_PRICE = 4900; // FCFA
 
 export default function UpgradePage() {
   const router = useRouter();
@@ -143,9 +143,9 @@ export default function UpgradePage() {
             {/* Price - Design amélioré */}
             <div className="text-center py-6 bg-gradient-to-br from-primary/10 to-transparent rounded-xl border-2 border-primary/20">
               <div className="flex items-baseline justify-center gap-1">
-                <span className="text-6xl font-black text-gray-900">5</span>
+                <span className="text-6xl font-black text-gray-900">4</span>
                 <span className="text-4xl font-bold text-primary">.</span>
-                <span className="text-6xl font-black text-gray-900">000</span>
+                <span className="text-6xl font-black text-gray-900">900</span>
                 <span className="text-2xl font-bold text-gray-600 ml-2">FCFA</span>
               </div>
               <div className="text-base text-gray-600 mt-2 font-semibold">/mois</div>
@@ -172,7 +172,7 @@ export default function UpgradePage() {
               onClick={async () => {
                 try {
                   setLoading(true);
-                  // Utiliser la route Stripe Checkout avec abonnement
+                  // Créer la session de paiement pour l'abonnement
                   const response = await fetch('/api/stripe/create-checkout-session', {
                     method: 'POST',
                     headers: {
@@ -191,7 +191,7 @@ export default function UpgradePage() {
                   }
 
                   if (data.url) {
-                    // Rediriger vers Stripe Checkout
+                    // Rediriger vers la page de paiement
                     window.location.href = data.url;
                   } else {
                     throw new Error('URL de checkout non reçue');
@@ -214,13 +214,13 @@ export default function UpgradePage() {
               ) : (
                 <>
                   <Crown className="w-6 h-6 mr-2" />
-                  S'abonner avec Stripe - 5,000 FCFA/mois
+                  S'abonner au Plan PRO - 4,900 FCFA/mois
                 </>
               )}
             </Button>
 
             <p className="text-xs text-center text-gray-500">
-              Paiement sécurisé par Stripe • Annulation à tout moment
+              Paiement sécurisé • Annulation à tout moment
               <br />
               Renouvellement automatique chaque mois
             </p>

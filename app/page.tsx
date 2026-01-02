@@ -401,18 +401,17 @@ export default function HomePage() {
         </motion.div>
 
         <motion.div 
-          className="mt-10 grid gap-6 md:grid-cols-2"
+          className="mt-10 flex justify-center"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
           variants={{
             visible: {
-              transition: {
-                staggerChildren: 0.2,
-              },
+              transition: { staggerChildren: 0.2 },
             },
           }}
         >
+          <div className="grid gap-6 md:grid-cols-2 max-w-4xl w-full">
           {/* Plan Gratuit */}
           <motion.div 
             variants={{
@@ -429,7 +428,7 @@ export default function HomePage() {
               transition: { type: "spring", stiffness: 400, damping: 17 }
             }}
             whileTap={{ scale: 0.98 }}
-            className="group relative overflow-hidden rounded-3xl border-2 border-gray-200 bg-white p-8 shadow-xl cursor-pointer"
+            className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-lg cursor-pointer"
             style={{ willChange: 'transform' }}
           >
             <motion.div 
@@ -446,27 +445,27 @@ export default function HomePage() {
               transition={{ duration: 1, ease: "easeInOut" }}
             />
             <div className="relative">
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-3">
                 <div>
-                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Plan</div>
-                  <div className="text-3xl font-bold tracking-tight text-gray-900">Gratuit</div>
+                  <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-0.5">Plan</div>
+                  <div className="text-2xl font-bold tracking-tight text-gray-900">Gratuit</div>
                 </div>
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-medium text-gray-600">
                   Pour démarrer
                 </span>
               </div>
               
-              <div className="my-6">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-5xl font-bold text-gray-900">0</span>
-                  <span className="text-3xl font-bold text-gray-400">.</span>
-                  <span className="text-5xl font-bold text-gray-900">000</span>
-                  <span className="text-xl font-semibold text-gray-600 ml-2">FCFA</span>
+              <div className="my-4">
+                <div className="flex items-baseline gap-0.5">
+                  <span className="text-4xl font-bold text-gray-900">0</span>
+                  <span className="text-2xl font-bold text-gray-400">.</span>
+                  <span className="text-4xl font-bold text-gray-900">000</span>
+                  <span className="text-lg font-semibold text-gray-600 ml-1.5">FCFA</span>
                 </div>
-                <div className="text-sm text-gray-500 mt-1">/mois</div>
+                <div className="text-xs text-gray-500 mt-0.5">/mois</div>
               </div>
 
-              <ul className="space-y-3 text-base mb-8">
+              <ul className="space-y-2 text-sm mb-6">
                 {[
                   '5 devis/mois',
                   '20 articles catalogue',
@@ -474,11 +473,11 @@ export default function HomePage() {
                   'Envoi WhatsApp/SMS/Email',
                   'Watermark sur PDF',
                 ].map((t) => (
-                  <li key={t} className="flex items-center gap-3 text-gray-900 font-medium">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                  <li key={t} className="flex items-center gap-2.5 text-gray-700 font-normal">
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
+                      <span className="w-2 h-2 rounded-full bg-blue-600" />
                     </div>
-                    <span>{t}</span>
+                    <span className="text-sm">{t}</span>
                   </li>
                 ))}
               </ul>
@@ -512,7 +511,7 @@ export default function HomePage() {
               transition: { type: "spring", stiffness: 400, damping: 17 }
             }}
             whileTap={{ scale: 0.98 }}
-            className="group relative overflow-hidden rounded-3xl border-2 border-primary bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 p-8 shadow-2xl cursor-pointer"
+            className="group relative overflow-hidden rounded-2xl border-2 border-primary bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 p-6 shadow-xl cursor-pointer"
             style={{ willChange: 'transform' }}
           >
             <motion.div 
@@ -540,30 +539,30 @@ export default function HomePage() {
               whileHover={{ scale: 1.1, rotate: [0, -5, 5, 0] }}
               transition={{ duration: 0.3 }}
             >
-              <span className="rounded-full bg-gradient-to-r from-primary to-primary/80 px-4 py-1.5 text-xs font-bold text-white shadow-lg">
+              <span className="rounded-full bg-gradient-to-r from-primary to-primary/80 px-3 py-1 text-[10px] font-bold text-white shadow-md">
                 ⭐ Populaire
               </span>
             </motion.div>
             
             <div className="relative">
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-3">
                 <div>
-                  <div className="text-xs font-semibold text-primary/80 uppercase tracking-wider mb-1">Plan</div>
-                  <div className="text-3xl font-bold tracking-tight text-gray-900">PRO</div>
+                  <div className="text-[10px] font-semibold text-primary/80 uppercase tracking-wider mb-0.5">Plan</div>
+                  <div className="text-2xl font-bold tracking-tight text-gray-900">PRO</div>
                 </div>
               </div>
 
-              <div className="my-6">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-5xl font-bold text-gray-900">5</span>
-                  <span className="text-3xl font-bold text-primary">.</span>
-                  <span className="text-5xl font-bold text-gray-900">000</span>
-                  <span className="text-xl font-semibold text-gray-600 ml-2">FCFA</span>
+              <div className="my-4">
+                <div className="flex items-baseline gap-0.5">
+                  <span className="text-4xl font-bold text-gray-900">4</span>
+                  <span className="text-2xl font-bold text-primary">.</span>
+                  <span className="text-4xl font-bold text-gray-900">900</span>
+                  <span className="text-lg font-semibold text-gray-600 ml-1.5">FCFA</span>
                 </div>
-                <div className="text-sm text-gray-500 mt-1">/mois</div>
+                <div className="text-xs text-gray-500 mt-0.5">/mois</div>
               </div>
 
-              <ul className="space-y-3 text-base mb-8">
+              <ul className="space-y-2 text-sm mb-6">
                 {[
                   'Devis illimités',
                   'Catalogue illimité',
@@ -572,11 +571,11 @@ export default function HomePage() {
                   'Templates multiples',
                   'Support WhatsApp prioritaire',
                 ].map((t) => (
-                  <li key={t} className="flex items-center gap-3 text-gray-950 font-semibold">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                      <span className="w-2.5 h-2.5 rounded-full bg-white" />
+                  <li key={t} className="flex items-center gap-2.5 text-gray-800 font-medium">
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                      <span className="w-2 h-2 rounded-full bg-white" />
                     </div>
-                    <span>{t}</span>
+                    <span className="text-sm">{t}</span>
                   </li>
                 ))}
               </ul>
@@ -593,6 +592,7 @@ export default function HomePage() {
               </motion.div>
             </div>
           </motion.div>
+          </div>
         </motion.div>
       </section>
 

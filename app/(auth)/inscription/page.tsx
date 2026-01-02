@@ -118,7 +118,7 @@ export default function InscriptionPage() {
       // 2. Créer le profil utilisateur via fonction RPC (contourne RLS)
       // Cette fonction utilise SECURITY DEFINER pour permettre l'insertion
       // Utilisation de paramètres nommés pour éviter l'ambiguïté
-      const { error: profileError } = await supabase.rpc('create_user_profile', {
+      const { error: profileError } = await supabase.rpc('create_user_profile' as any, {
         p_user_id: userId,
         p_email: formData.email,
         p_phone: formData.phone,

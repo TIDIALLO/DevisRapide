@@ -65,6 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.name}
                   href={item.href}
+                  prefetch={true}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                     isActive
@@ -105,6 +106,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.name}
                   href={item.href}
+                  prefetch={true}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                     isActive
                       ? 'bg-primary text-white'
@@ -146,8 +148,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex flex-col items-center justify-center py-3 ${
-                isActive ? 'text-primary' : 'text-gray-600'
+              prefetch={true}
+              className={`flex flex-col items-center justify-center py-3 transition-colors ${
+                isActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
               }`}
             >
               <Icon className="w-5 h-5 mb-1" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/app-shell';
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle2, Crown, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
-export default function UpgradeSuccessPage() {
+function UpgradeSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -154,7 +154,7 @@ export default function UpgradeSuccessPage() {
             <div className="bg-white p-4 rounded-lg border">
               <p className="text-sm text-gray-600 mb-1">Montant payé</p>
               <p className="text-2xl font-bold text-green-700">
-                5.000 FCFA
+                4.900 FCFA
               </p>
               <p className="text-xs text-gray-500 mt-1">Abonnement mensuel</p>
             </div>
@@ -182,5 +182,19 @@ export default function UpgradeSuccessPage() {
         </Card>
       </div>
     </AppShell>
+  );
+}
+
+export default function UpgradeSuccessPage() {
+  return (
+    <Suspense fallback={
+      <AppShell>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </AppShell>
+    }>
+      <UpgradeSuccessContent />
+    </Suspense>
   );
 }

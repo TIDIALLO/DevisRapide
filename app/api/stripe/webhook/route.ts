@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
         // Si c'est un abonnement
         if (session.mode === 'subscription' && session.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+          const subscription = await stripe.subscriptions.retrieve(session.subscription as string) as Stripe.Subscription;
 
           // Mettre à jour le paiement
           await supabase
@@ -55,16 +55,16 @@ export async function POST(request: NextRequest) {
               status: 'succeeded',
               stripe_subscription_id: subscription.id,
               subscription_status: subscription.status,
-              subscription_current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-              subscription_current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              subscription_current_period_start: (subscription as any).current_period_start ? new Date((subscription as any).current_period_start * 1000).toISOString() : null,
+              subscription_current_period_end: (subscription as any).current_period_end ? new Date((subscription as any).current_period_end * 1000).toISOString() : null,
               updated_at: new Date().toISOString(),
-            })
+            } as any)
             .eq('stripe_session_id', session.id);
 
           // Mettre à jour l'utilisateur
           const userId = session.metadata?.user_id;
           if (userId) {
-            const expiresAt = new Date(subscription.current_period_end * 1000);
+            const expiresAt = new Date((subscription as any).current_period_end * 1000);
 
             await supabase
               .from('users')
@@ -120,16 +120,16 @@ export async function POST(request: NextRequest) {
           .from('payments')
           .update({
             subscription_status: subscription.status,
-            subscription_current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            subscription_current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            subscription_current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+            subscription_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
             updated_at: new Date().toISOString(),
-          })
+          } as any)
           .eq('stripe_subscription_id', subscription.id);
 
         // Mettre à jour l'utilisateur
         const userId = subscription.metadata?.user_id;
         if (userId) {
-          const expiresAt = new Date(subscription.current_period_end * 1000);
+          const expiresAt = new Date((subscription as any).current_period_end * 1000);
           const plan = subscription.status === 'active' ? 'pro' : 'free';
 
           await supabase
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
         const invoice = event.data.object as Stripe.Invoice;
         console.log('⚠️ Payment failed for invoice:', invoice.id);
 
-        const subscription = invoice.subscription as string;
+        const subscription = (invoice as any).subscription as string;
         if (subscription) {
           await supabase
             .from('payments')

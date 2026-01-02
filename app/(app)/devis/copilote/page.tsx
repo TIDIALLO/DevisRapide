@@ -158,6 +158,8 @@ export default function CopiloteDevisPage() {
       id: 'draft-quote',
       user_id: profile.id,
       client_id: resolvedClient.id,
+      document_type: 'devis',
+      service_description: null,
       quote_number: `DEV-DRAFT`,
       status: 'draft',
       date: quoteDate.toISOString().slice(0, 10),

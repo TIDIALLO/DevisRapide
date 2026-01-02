@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/app-shell';
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { XCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
-export default function PaymentErrorPage() {
+function PaymentErrorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -136,5 +136,19 @@ export default function PaymentErrorPage() {
         </Card>
       </div>
     </AppShell>
+  );
+}
+
+export default function PaymentErrorPage() {
+  return (
+    <Suspense fallback={
+      <AppShell>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </AppShell>
+    }>
+      <PaymentErrorContent />
+    </Suspense>
   );
 }

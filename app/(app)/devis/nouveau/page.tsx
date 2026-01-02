@@ -11,9 +11,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Trash2, Search, Save, Send, X } from 'lucide-react';
+import { Plus, Trash2, Search, Save, Send, X, Eye } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type { Client, CatalogItem } from '@/types';
+import { useToast } from '@/components/ui/toast';
+import { ClientSelector } from '@/components/clients/client-selector';
+import { offlineStorage } from '@/lib/offline/storage';
 
 
 interface QuoteItem {
@@ -30,6 +33,7 @@ interface QuoteItem {
 export default function NewQuotePage() {
   const router = useRouter();
   const supabase = createClient();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -56,15 +60,8 @@ export default function NewQuotePage() {
   const [notes, setNotes] = useState('');
   
   // Dialogs
-  const [showClientDialog, setShowClientDialog] = useState(false);
   const [showItemDialog, setShowItemDialog] = useState(false);
   const [searchCatalog, setSearchCatalog] = useState('');
-  const [newClientData, setNewClientData] = useState({
-    full_name: '',
-    phone: '',
-    email: '',
-    address: '',
-  });
 
   useEffect(() => {
     loadData();
@@ -83,6 +80,12 @@ export default function NewQuotePage() {
 
       setUser(authUser);
 
+      // Initialiser le stockage hors ligne
+      await offlineStorage.init();
+
+      // Vérifier si on est en ligne
+      const isOnline = navigator.onLine;
+
       // Load profile
       const { data: profile } = await supabase
         .from('users')
@@ -94,37 +97,88 @@ export default function NewQuotePage() {
         setPaymentTerms(profile.default_payment_terms);
       }
 
-      // Load clients
-      const { data: clientsData } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', authUser.id)
-        .order('created_at', { ascending: false });
+      // Charger les clients (en ligne ou hors ligne)
+      if (isOnline) {
+        const { data: clientsData } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false });
 
-      if (clientsData) {
-        setClients(clientsData);
+        if (clientsData) {
+          setClients(clientsData);
+          // Sauvegarder en local pour le mode hors ligne
+          await Promise.all(clientsData.map(client => offlineStorage.saveClient(client)));
+        }
+      } else {
+        // Charger depuis le cache local
+        const cachedClients = await offlineStorage.getClients();
+        // Filtrer par user_id localement
+        const userClients = cachedClients.filter(c => c.user_id === authUser.id);
+        if (userClients.length > 0) {
+          setClients(userClients);
+          addToast({
+            type: 'info',
+            title: 'Mode hors ligne',
+            description: 'Données chargées depuis le cache local.',
+          });
+        }
       }
 
-      // Load catalog
-      const { data: catalogData } = await supabase
-        .from('catalog_items')
-        .select('*')
-        .eq('user_id', authUser.id)
-        .order('name');
+      // Charger le catalogue (en ligne ou hors ligne)
+      if (isOnline) {
+        const { data: catalogData } = await supabase
+          .from('catalog_items')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .order('name');
 
-      if (catalogData) {
-        setCatalogItems(catalogData);
+        if (catalogData) {
+          setCatalogItems(catalogData);
+          // Sauvegarder en local pour le mode hors ligne
+          await Promise.all(catalogData.map(item => offlineStorage.saveCatalogItem(item)));
+        }
+      } else {
+        // Charger depuis le cache local
+        const cachedCatalog = await offlineStorage.getCatalogItems();
+        // Filtrer par user_id localement
+        const userCatalog = cachedCatalog.filter(item => item.user_id === authUser.id);
+        if (userCatalog.length > 0) {
+          setCatalogItems(userCatalog);
+        }
       }
     } catch (error) {
       console.error('Erreur chargement données:', error);
+      // En cas d'erreur, essayer de charger depuis le cache local
+      if (user) {
+        try {
+          const cachedClients = await offlineStorage.getClients();
+          const cachedCatalog = await offlineStorage.getCatalogItems();
+          const userClients = cachedClients.filter((c: any) => c.user_id === user.id);
+          const userCatalog = cachedCatalog.filter((item: any) => item.user_id === user.id);
+          if (userClients.length > 0) setClients(userClients);
+          if (userCatalog.length > 0) setCatalogItems(userCatalog);
+        } catch (cacheError) {
+          console.error('Erreur chargement cache:', cacheError);
+        }
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateClient = async () => {
-    if (!newClientData.full_name || !newClientData.phone) {
-      alert('⚠️ Le nom complet et le téléphone sont obligatoires.');
+  const handleCreateClient = async (clientData: {
+    full_name: string;
+    phone: string;
+    email?: string;
+    address?: string;
+  }) => {
+    if (!clientData.full_name || !clientData.phone) {
+      addToast({
+        type: 'warning',
+        title: 'Champs obligatoires',
+        description: 'Le nom complet et le téléphone sont obligatoires.',
+      });
       return;
     }
 
@@ -136,7 +190,11 @@ export default function NewQuotePage() {
       
       if (sessionError || !session || !session.user) {
         console.error('Erreur session:', sessionError);
-        alert('❌ Votre session a expiré. Veuillez vous reconnecter.');
+        addToast({
+          type: 'error',
+          title: 'Session expirée',
+          description: 'Votre session a expiré. Veuillez vous reconnecter.',
+        });
         router.push('/connexion');
         return;
       }
@@ -145,41 +203,49 @@ export default function NewQuotePage() {
 
       // 2. Vérifier que l'utilisateur correspond
       if (!user || currentUser.id !== user.id) {
-        alert('❌ Erreur de session. Veuillez vous reconnecter.');
+        addToast({
+          type: 'error',
+          title: 'Erreur de session',
+          description: 'Veuillez vous reconnecter.',
+        });
         router.push('/connexion');
         return;
       }
 
-      const clientData = {
+      const clientDataToInsert = {
         user_id: currentUser.id, // Doit correspondre à auth.uid() pour que RLS accepte
-        full_name: newClientData.full_name.trim(),
-        phone: newClientData.phone.trim(),
-        email: newClientData.email?.trim() || null,
-        address: newClientData.address?.trim() || null,
+        full_name: clientData.full_name.trim(),
+        phone: clientData.phone.trim(),
+        email: clientData.email?.trim() || null,
+        address: clientData.address?.trim() || null,
       };
 
       console.log('Création client avec user_id:', currentUser.id);
-      console.log('Données client:', clientData);
+      console.log('Données client:', clientDataToInsert);
       
       // Vérifier une dernière fois la session avant l'insertion
       const { data: { session: finalSession } } = await supabase.auth.getSession();
       if (!finalSession || finalSession.user.id !== currentUser.id) {
         console.error('❌ Session invalide au moment de l\'insertion');
-        alert('❌ Votre session a expiré. Veuillez vous reconnecter.');
+        addToast({
+          type: 'error',
+          title: 'Session expirée',
+          description: 'Votre session a expiré. Veuillez vous reconnecter.',
+        });
         router.push('/connexion');
         return;
       }
       
       console.log('✅ Session confirmée avant insertion - User ID:', finalSession.user.id);
       console.log('📤 Envoi de la requête INSERT avec:', {
-        user_id: clientData.user_id,
-        full_name: clientData.full_name,
-        phone: clientData.phone,
+        user_id: clientDataToInsert.user_id,
+        full_name: clientDataToInsert.full_name,
+        phone: clientDataToInsert.phone,
       });
 
       const { data, error } = await supabase
         .from('clients')
-        .insert(clientData)
+        .insert(clientDataToInsert)
         .select()
         .single();
       
@@ -257,8 +323,11 @@ export default function NewQuotePage() {
       console.log('✅ Client créé avec succès:', data);
       setClients([data, ...clients]);
       setSelectedClientId(data.id);
-      setShowClientDialog(false);
-      setNewClientData({ full_name: '', phone: '', email: '', address: '' });
+      addToast({
+        type: 'success',
+        title: 'Client créé',
+        description: `${data.full_name} a été ajouté avec succès.`,
+      });
     } catch (error: any) {
       // Capture complète de l'erreur avec toutes les informations possibles
       console.error('❌ Erreur complète dans handleCreateClient:', error);
@@ -305,7 +374,11 @@ export default function NewQuotePage() {
       }
       
       // Afficher un message d'erreur clair
-      alert(`❌ ${errorMessage}\n\nVérifiez la console pour plus de détails.`);
+      addToast({
+        type: 'error',
+        title: 'Erreur de création',
+        description: errorMessage,
+      });
     }
   };
 
@@ -368,18 +441,59 @@ export default function NewQuotePage() {
 
   const handleSave = async (status: 'draft' | 'sent') => {
     if (!user || !selectedClientId || items.length === 0) {
-      alert('Veuillez sélectionner un client et ajouter au moins un article');
+      addToast({
+        type: 'warning',
+        title: 'Informations manquantes',
+        description: 'Veuillez sélectionner un client et ajouter au moins un article.',
+      });
       return;
     }
 
     setSaving(true);
+    const isOnline = navigator.onLine;
+
     try {
+      // Si hors ligne, sauvegarder en local
+      if (!isOnline) {
+        const draftData = {
+          id: `draft-${Date.now()}`,
+          user_id: user.id,
+          selectedClientId,
+          documentType,
+          serviceDescription,
+          quoteDate,
+          validUntil,
+          items,
+          discountType,
+          discountValue,
+          taxRate,
+          paymentTerms,
+          notes,
+          status,
+          timestamp: Date.now(),
+        };
+
+        await offlineStorage.saveDraft(draftData);
+        addToast({
+          type: 'success',
+          title: 'Brouillon sauvegardé',
+          description: 'Le devis a été sauvegardé localement. Il sera synchronisé automatiquement lorsque la connexion sera rétablie.',
+        });
+        setSaving(false);
+        return;
+      }
+
+      // Si en ligne, procéder normalement
       // Vérifier la session avant de créer le devis
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session || !session.user || session.user.id !== user.id) {
         console.error('❌ Erreur session:', sessionError);
-        alert('❌ Votre session a expiré. Veuillez vous reconnecter.');
+        addToast({
+          type: 'error',
+          title: 'Session expirée',
+          description: 'Votre session a expiré. Veuillez vous reconnecter.',
+        });
         router.push('/connexion');
         setSaving(false);
         return;
@@ -432,27 +546,47 @@ export default function NewQuotePage() {
         errorMessage = error.message;
       }
       
-      alert(`❌ ${errorMessage}`);
+      addToast({
+        type: 'error',
+        title: 'Erreur de création',
+        description: errorMessage,
+      });
       setSaving(false);
     }
   };
 
-  // Fonction helper pour générer le numéro de devis manuellement
+  // Fonction helper pour générer le numéro de devis manuellement avec vérification d'unicité
   const generateQuoteNumberManually = async (userId: string): Promise<string> => {
     try {
-      // Compter les quotes existantes pour générer le numéro
-      const { count, error: countError } = await supabase
+      // Récupérer tous les numéros de devis existants pour cet utilisateur
+      const { data: existingQuotes, error: fetchError } = await supabase
         .from('quotes')
-        .select('*', { count: 'exact', head: true })
+        .select('quote_number')
         .eq('user_id', userId);
       
-      if (countError) {
-        console.warn('⚠️ Erreur lors du comptage des quotes, utilisation d\'un numéro basé sur le timestamp');
-        // Utiliser un numéro basé sur le timestamp en dernier recours
+      if (fetchError) {
+        console.warn('⚠️ Erreur lors de la récupération des quotes, utilisation d\'un numéro basé sur le timestamp');
         return `DEV-${Date.now().toString().slice(-6)}`;
       }
       
-      const nextNumber = (count || 0) + 1;
+      // Extraire les numéros existants
+      const existingNumbers = new Set(
+        (existingQuotes || [])
+          .map(q => q.quote_number)
+          .filter(n => n && n.startsWith('DEV-'))
+          .map(n => {
+            const match = n.match(/DEV-(\d+)/);
+            return match ? parseInt(match[1], 10) : null;
+          })
+          .filter(n => n !== null) as number[]
+      );
+      
+      // Trouver le prochain numéro disponible
+      let nextNumber = 1;
+      while (existingNumbers.has(nextNumber)) {
+        nextNumber++;
+      }
+      
       return `DEV-${String(nextNumber).padStart(3, '0')}`;
     } catch (error) {
       console.warn('⚠️ Exception lors de la génération manuelle, utilisation d\'un numéro basé sur le timestamp');
@@ -499,13 +633,33 @@ export default function NewQuotePage() {
       status: status,
     });
 
+    // Vérifier que le numéro n'existe pas déjà avant l'insertion
+    const { data: existingQuote, error: checkError } = await supabase
+      .from('quotes')
+      .select('id')
+      .eq('user_id', currentUserId)
+      .eq('quote_number', quoteNumber)
+      .maybeSingle();
+
+    if (checkError) {
+      console.warn('⚠️ Erreur lors de la vérification du numéro, on continue quand même');
+    }
+
+    // Si le numéro existe déjà, générer un nouveau numéro
+    let finalQuoteNumber = quoteNumber;
+    if (existingQuote) {
+      console.warn(`⚠️ Le numéro ${quoteNumber} existe déjà, génération d'un nouveau numéro`);
+      finalQuoteNumber = await generateQuoteNumberManually(currentUserId);
+      console.log(`✅ Nouveau numéro généré: ${finalQuoteNumber}`);
+    }
+
     // Create quote
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
       .insert({
         user_id: currentUserId, // Utiliser l'ID de la session vérifiée
         client_id: selectedClientId,
-        quote_number: quoteNumber,
+        quote_number: finalQuoteNumber,
         status: status,
         document_type: documentType,
         service_description: serviceDescription || null,
@@ -573,23 +727,22 @@ export default function NewQuotePage() {
         console.error('📋 Session valide:', !!finalSession);
         
         // Afficher un message clair avec instructions
-        const errorMsg = `🔒 Erreur de sécurité RLS
-
-Les politiques de sécurité (RLS) ne sont pas configurées dans Supabase.
-
-SOLUTION :
-1. Aller dans Supabase Dashboard → SQL Editor
-2. Exécuter : lib/supabase/FIX_QUOTES_RLS_DEFINITIVE.sql
-3. Se déconnecter et se reconnecter
-4. Réessayer
-
-Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
-        
-        alert(errorMsg);
+        addToast({
+          type: 'error',
+          title: 'Erreur de sécurité RLS',
+          description: 'Les politiques de sécurité ne sont pas configurées. Voir EXECUTER_SCRIPT_SQL.md pour les instructions.',
+          duration: 10000,
+        });
         throw new Error('🔒 Erreur RLS : Les politiques de sécurité ne sont pas configurées. Veuillez exécuter le script SQL FIX_QUOTES_RLS_DEFINITIVE.sql dans Supabase Dashboard.');
       }
-      if (quoteErrorCode === '23505' || quoteErrorMessage?.includes('duplicate')) {
-        throw new Error('📧 Un devis avec ce numéro existe déjà.');
+      if (quoteErrorCode === '23505' || quoteErrorMessage?.includes('duplicate') || quoteErrorMessage?.includes('unique')) {
+        // Si le numéro existe déjà, générer un nouveau numéro et réessayer
+        console.warn('⚠️ Numéro de devis déjà existant, génération d\'un nouveau numéro...');
+        const newQuoteNumber = await generateQuoteNumberManually(currentUserId);
+        console.log('🔄 Nouveau numéro généré:', newQuoteNumber);
+        
+        // Réessayer avec le nouveau numéro
+        return createQuote(newQuoteNumber, status);
       }
       if (quoteErrorCode === 'PGRST301' || quoteErrorMessage?.includes('permission denied')) {
         throw new Error('🔒 Erreur de permission : Vous n\'avez pas les droits nécessaires.');
@@ -628,6 +781,13 @@ Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
       throw itemsError;
     }
 
+    // Sauvegarder aussi en local pour le mode hors ligne
+    try {
+      await offlineStorage.saveQuote(quote);
+    } catch (cacheError) {
+      console.warn('Erreur sauvegarde cache local:', cacheError);
+    }
+
     // Redirect to quote detail
     router.push(`/devis/${quote.id}`);
   };
@@ -657,26 +817,20 @@ Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
         {/* Client Selection */}
         <Card>
           <CardHeader>
-            <CardTitle>1. Client et Type de document</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                1
+              </span>
+              Client et Type de document
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Sélectionner un client..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.full_name} - {client.phone}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" onClick={() => setShowClientDialog(true)}>
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
+            <ClientSelector
+              clients={clients}
+              selectedClientId={selectedClientId}
+              onSelect={setSelectedClientId}
+              onCreateNew={handleCreateClient}
+            />
 
             <div className="space-y-2">
               <Label>Type de document</Label>
@@ -691,17 +845,6 @@ Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Service fourni</Label>
-              <Input
-                placeholder="Ex: Création d'une application web, Peinture d'une maison, Réparation véhicule..."
-                value={serviceDescription}
-                onChange={(e) => setServiceDescription(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Décrivez le service ou le projet pour lequel ce document est établi
-              </p>
-            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -728,15 +871,20 @@ Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>2. Articles / Services</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                  2
+                </span>
+                Articles / Services
+              </CardTitle>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setShowItemDialog(true)}>
                   <Search className="w-4 h-4 mr-2" />
                   Catalogue
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleAddCustomItem}>
+                <Button variant="default" size="sm" onClick={handleAddCustomItem} className="font-semibold">
                   <Plus className="w-4 h-4 mr-2" />
-                  Article custom
+                  Ajouter
                 </Button>
               </div>
             </div>
@@ -811,7 +959,12 @@ Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
         {/* Totals */}
         <Card>
           <CardHeader>
-            <CardTitle>3. Calculs</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                3
+              </span>
+              Calculs
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between text-lg">
@@ -883,7 +1036,12 @@ Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
         {/* Additional Info */}
         <Card>
           <CardHeader>
-            <CardTitle>4. Informations complémentaires</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                4
+              </span>
+              Informations complémentaires
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -919,6 +1077,22 @@ Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
             Sauvegarder brouillon
           </Button>
           <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              // TODO: Implémenter la prévisualisation PDF
+              addToast({
+                type: 'info',
+                title: 'Prévisualisation',
+                description: 'Fonctionnalité de prévisualisation à venir.',
+              });
+            }}
+            disabled={saving}
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            Prévisualiser
+          </Button>
+          <Button
             className="flex-1"
             onClick={() => handleSave('sent')}
             disabled={saving}
@@ -928,62 +1102,6 @@ Voir EXECUTER_SCRIPT_SQL.md pour les instructions détaillées.`;
           </Button>
         </div>
       </div>
-
-      {/* Client Dialog */}
-      <Dialog open={showClientDialog} onOpenChange={setShowClientDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nouveau client</DialogTitle>
-            <DialogDescription>Créez un nouveau client rapidement</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nom complet *</Label>
-              <Input
-                value={newClientData.full_name}
-                onChange={(e) => setNewClientData({ ...newClientData, full_name: e.target.value })}
-                placeholder="Ex: Fatou Seck"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Téléphone *</Label>
-              <Input
-                value={newClientData.phone}
-                onChange={(e) => setNewClientData({ ...newClientData, phone: e.target.value })}
-                placeholder="+221 77 123 45 67"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={newClientData.email}
-                onChange={(e) => setNewClientData({ ...newClientData, email: e.target.value })}
-                placeholder="email@example.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Adresse</Label>
-              <Input
-                value={newClientData.address}
-                onChange={(e) => setNewClientData({ ...newClientData, address: e.target.value })}
-                placeholder="Dakar, Sénégal"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowClientDialog(false)}>
-              Annuler
-            </Button>
-            <Button
-              onClick={handleCreateClient}
-              disabled={!newClientData.full_name || !newClientData.phone}
-            >
-              Créer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Catalog Dialog */}
       <Dialog open={showItemDialog} onOpenChange={setShowItemDialog}>

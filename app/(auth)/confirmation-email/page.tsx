@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Mail, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { SupabaseSetupCard } from '@/components/setup/supabase-setup-card';
 
-export default function ConfirmationEmailPage() {
+function ConfirmationEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const configured = isSupabaseConfigured();
@@ -65,6 +65,7 @@ export default function ConfirmationEmailPage() {
   }, [searchParams, supabase, configured]);
 
   const checkEmailStatus = async () => {
+    if (!supabase) return;
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
@@ -272,3 +273,21 @@ export default function ConfirmationEmailPage() {
   );
 }
 
+export default function ConfirmationEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            </div>
+            <CardTitle>Chargement...</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <ConfirmationEmailContent />
+    </Suspense>
+  );
+}

@@ -248,12 +248,14 @@ export default function CataloguePage() {
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Catégorie" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes catégories</SelectItem>
+            <SelectContent className="bg-white">
+              <SelectItem value="all" className="font-semibold text-gray-900 bg-white hover:bg-gray-50">
+                Toutes catégories
+              </SelectItem>
               {categories
                 .filter((c) => c !== 'all')
                 .map((category) => (
-                  <SelectItem key={category} value={category}>
+                  <SelectItem key={category} value={category} className="text-gray-900">
                     {category}
                   </SelectItem>
                 ))}

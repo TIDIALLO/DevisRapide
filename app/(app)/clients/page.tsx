@@ -19,10 +19,12 @@ import {
 } from '@/components/ui/dialog';
 import { Plus, Search, Phone, Mail, MapPin, Edit, Trash2, User } from 'lucide-react';
 import type { Client } from '@/types';
+import { useToast } from '@/components/ui/toast';
 
 export default function ClientsPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { addToast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,7 +96,11 @@ export default function ClientsPage() {
     try {
       // Vérifier que les champs requis sont remplis
       if (!formData.full_name || !formData.phone) {
-        alert('⚠️ Le nom complet et le téléphone sont obligatoires.');
+        addToast({
+          type: 'warning',
+          title: 'Champs obligatoires',
+          description: 'Le nom complet et le téléphone sont obligatoires.',
+        });
         return;
       }
 
@@ -105,7 +111,11 @@ export default function ClientsPage() {
       if (userError || !user) {
         console.error('Erreur utilisateur:', userError);
         console.error('User:', user);
-        alert('❌ Votre session a expiré. Veuillez vous reconnecter.');
+        addToast({
+          type: 'error',
+          title: 'Session expirée',
+          description: 'Votre session a expiré. Veuillez vous reconnecter.',
+        });
         router.push('/connexion');
         return;
       }
@@ -117,7 +127,11 @@ export default function ClientsPage() {
         console.error('Erreur session:', sessionError);
         console.error('Session:', session);
         // Si getUser() a réussi mais getSession() échoue, forcer un refresh
-        alert('⚠️ Problème de session détecté. Veuillez vous reconnecter.');
+        addToast({
+          type: 'error',
+          title: 'Problème de session',
+          description: 'Veuillez vous reconnecter.',
+        });
         router.push('/connexion');
         return;
       }
@@ -128,7 +142,11 @@ export default function ClientsPage() {
           sessionUserId: session.user.id,
           getUserUserId: user.id,
         });
-        alert('❌ Erreur de session : Les identifiants ne correspondent pas. Veuillez vous reconnecter.');
+        addToast({
+          type: 'error',
+          title: 'Erreur de session',
+          description: 'Les identifiants ne correspondent pas. Veuillez vous reconnecter.',
+        });
         router.push('/connexion');
         return;
       }
@@ -166,11 +184,24 @@ export default function ClientsPage() {
       }
 
       if (editingClient) {
-        // Mise à jour
-        const { error } = await supabase
+        // Mise à jour - S'assurer que user_id est inclus pour RLS
+        const updateData = {
+          full_name: formData.full_name.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email?.trim() || null,
+          address: formData.address?.trim() || null,
+          notes: formData.notes?.trim() || null,
+        };
+
+        console.log('Mise à jour client:', { id: editingClient.id, data: updateData });
+
+        const { data: updatedClient, error } = await supabase
           .from('clients')
-          .update(formData)
-          .eq('id', editingClient.id);
+          .update(updateData)
+          .eq('id', editingClient.id)
+          .eq('user_id', user.id) // S'assurer que c'est bien le client de l'utilisateur
+          .select()
+          .single();
 
         if (error) {
           console.error('Erreur mise à jour client:', error);
@@ -179,6 +210,17 @@ export default function ClientsPage() {
           }
           throw error;
         }
+
+        if (!updatedClient) {
+          throw new Error('Le client n\'a pas été mis à jour. Vérifiez que vous avez les permissions nécessaires.');
+        }
+
+        console.log('✅ Client mis à jour avec succès:', updatedClient);
+        addToast({
+          type: 'success',
+          title: 'Client modifié',
+          description: `${updatedClient.full_name} a été mis à jour avec succès.`,
+        });
       } else {
         // Création - S'assurer que user_id correspond exactement à auth.uid()
         const clientData = {
@@ -197,7 +239,11 @@ export default function ClientsPage() {
         const { data: { session: finalSession } } = await supabase.auth.getSession();
         if (!finalSession || finalSession.user.id !== user.id) {
           console.error('❌ Session invalide au moment de l\'insertion');
-          alert('❌ Votre session a expiré. Veuillez vous reconnecter.');
+          addToast({
+            type: 'error',
+            title: 'Session expirée',
+            description: 'Votre session a expiré. Veuillez vous reconnecter.',
+          });
           router.push('/connexion');
           return;
         }
@@ -230,13 +276,30 @@ export default function ClientsPage() {
         }
 
         console.log('Client créé avec succès:', data);
+        addToast({
+          type: 'success',
+          title: 'Client créé',
+          description: `${data.full_name} a été ajouté avec succès.`,
+        });
       }
 
       setDialogOpen(false);
+      setEditingClient(null);
+      setFormData({
+        full_name: '',
+        phone: '',
+        email: '',
+        address: '',
+        notes: '',
+      });
       await loadClients();
     } catch (error: any) {
       console.error('Erreur complète:', error);
-      alert(`❌ Erreur: ${error.message || 'Une erreur est survenue lors de la sauvegarde du client.'}`);
+      addToast({
+        type: 'error',
+        title: 'Erreur',
+        description: error.message || 'Une erreur est survenue lors de la sauvegarde du client.',
+      });
     }
   };
 
@@ -250,9 +313,20 @@ export default function ClientsPage() {
         .eq('id', client.id);
 
       if (error) throw error;
+      
+      addToast({
+        type: 'success',
+        title: 'Client supprimé',
+        description: `${client.full_name} a été supprimé.`,
+      });
+      
       await loadClients();
     } catch (error: any) {
-      alert('Erreur: ' + error.message);
+      addToast({
+        type: 'error',
+        title: 'Erreur de suppression',
+        description: error.message || 'Une erreur est survenue lors de la suppression.',
+      });
     }
   };
 

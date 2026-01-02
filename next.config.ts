@@ -10,7 +10,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // PWA configuration sera ajoutée avec next-pwa
 };
 
 export default nextConfig;

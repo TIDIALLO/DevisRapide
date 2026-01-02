@@ -62,7 +62,7 @@ export default function QuoteDetailPage() {
       // Load profile - Requête optimisée (seulement les colonnes nécessaires)
       const { data: profileData, error: profileError } = await supabase
         .from('users')
-        .select('id, full_name, business_name, address, phone, email, ninea, logo_url, signature_url, plan, plan_expires_at')
+        .select('*')
         .eq('id', user.id)
         .single();
 
