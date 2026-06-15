@@ -28,14 +28,17 @@ export async function middleware(req: NextRequest) {
 
   // Tant que Supabase n'est pas configuré, on évite de crasher le middleware
   // et on guide vers une page de setup.
-  // On considère aussi "non configuré" si l'URL n'est pas une vraie URL http(s)
-  // (ex: une clé "sb_publishable_..." collée par erreur).
   if (!isValidHttpUrl(url) || !anonKey) {
     const pathname = req.nextUrl.pathname;
     const setupRoutes = ['/', '/setup'];
-    const authRoutes = ['/connexion', '/inscription', '/confirmation-email'];
+    const authRoutes = [
+      '/connexion',
+      '/inscription',
+      '/confirmation-email',
+      '/mot-de-passe-oublie',
+      '/nouveau-mot-de-passe',
+    ];
 
-    // Autoriser l'accès à la landing + page setup + pages auth
     if ([...setupRoutes, ...authRoutes].includes(pathname)) {
       return res;
     }
@@ -62,8 +65,16 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // Routes publiques
-  const publicRoutes = ['/', '/setup', '/connexion', '/inscription', '/confirmation-email'];
+  // Routes publiques (accessibles sans session)
+  const publicRoutes = [
+    '/',
+    '/setup',
+    '/connexion',
+    '/inscription',
+    '/confirmation-email',
+    '/mot-de-passe-oublie',
+    '/nouveau-mot-de-passe',
+  ];
   const isPublicRoute = publicRoutes.includes(req.nextUrl.pathname);
 
   // Si pas de session et route protégée, rediriger vers connexion
@@ -73,15 +84,37 @@ export async function middleware(req: NextRequest) {
   }
 
   // Si session et sur page auth, rediriger vers dashboard
+  // MAIS seulement si l'email est confirmé
   if (session && (req.nextUrl.pathname === '/connexion' || req.nextUrl.pathname === '/inscription')) {
-    const redirectUrl = new URL('/dashboard', req.url);
-    return NextResponse.redirect(redirectUrl);
+    // Vérifier que l'email est confirmé avant de rediriger
+    if (session.user.email_confirmed_at) {
+      const redirectUrl = new URL('/dashboard', req.url);
+      return NextResponse.redirect(redirectUrl);
+    } else {
+      // Si l'email n'est pas confirmé, rediriger vers la page de confirmation
+      const email = session.user.email;
+      if (email) {
+        const redirectUrl = new URL(`/confirmation-email?email=${encodeURIComponent(email)}`, req.url);
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
   }
 
   return res;
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|public).*)'],
+  matcher: [
+    /*
+     * Exclure :
+     * - _next/static (fichiers statiques)
+     * - _next/image (optimisation images)
+     * - favicon.ico
+     * - public/ (fichiers publics)
+     * - api/ (routes API, gérées par leurs propres guards)
+     * - auth/callback (route de callback Supabase)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public|api|auth/callback).*)',
+  ],
 };
 

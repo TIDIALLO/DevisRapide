@@ -15,6 +15,9 @@ import { useAlertDialog } from '@/components/ui/alert-dialog';
 import { SignatureCanvas } from '@/components/signature/signature-canvas';
 import { Crown, Upload, Save, PenTool } from 'lucide-react';
 import type { User } from '@/types';
+import { getPlanStatus } from '@/lib/subscription/plan-validator';
+import { getProPriceLabel, PLANS, TRIAL_DURATION_DAYS } from '@/lib/subscription/config';
+import type { Plan } from '@/lib/subscription/config';
 
 export default function ProfilPage() {
   const router = useRouter();
@@ -248,7 +251,12 @@ export default function ProfilPage() {
     );
   }
 
-  const isPro = profile.plan === 'pro';
+  const planStatus = getPlanStatus({
+    plan: profile.plan as Plan,
+    planExpiresAt: profile.plan_expires_at,
+    createdAt: profile.created_at,
+  });
+  const hasProAccess = planStatus.hasProAccess;
 
   return (
     <AppShell>
@@ -259,12 +267,17 @@ export default function ProfilPage() {
         </div>
 
         {/* Plan Status */}
-        <Card id="upgrade" className={isPro ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0' : ''}>
+        <Card id="upgrade" className={hasProAccess ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0' : ''}>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className={isPro ? 'text-white' : ''}>
-                  {isPro ? (
+                <CardTitle className={hasProAccess ? 'text-white' : ''}>
+                  {planStatus.isTrial ? (
+                    <div className="flex items-center gap-2">
+                      <Crown className="w-5 h-5" />
+                      Essai PRO gratuit
+                    </div>
+                  ) : hasProAccess ? (
                     <div className="flex items-center gap-2">
                       <Crown className="w-5 h-5" />
                       Plan PRO
@@ -273,16 +286,27 @@ export default function ProfilPage() {
                     'Plan GRATUIT'
                   )}
                 </CardTitle>
-                <CardDescription className={isPro ? 'text-amber-100' : ''}>
-                  {isPro
-                    ? 'Accès illimité à toutes les fonctionnalités'
-                    : '5 devis/mois • 20 articles • 10 clients max'}
+                <CardDescription className={hasProAccess ? 'text-amber-100' : ''}>
+                  {planStatus.isTrial
+                    ? `${planStatus.daysRemaining} jour${planStatus.daysRemaining > 1 ? 's' : ''} restant${planStatus.daysRemaining > 1 ? 's' : ''} — Accès illimité`
+                    : hasProAccess
+                      ? planStatus.daysRemaining > 0
+                        ? `Renouvellement dans ${planStatus.daysRemaining} jours`
+                        : 'Accès illimité à toutes les fonctionnalités'
+                      : PLANS.free.description}
                 </CardDescription>
               </div>
-              {!isPro && (
+              {!hasProAccess && (
                 <Link href="/upgrade">
                   <Button size="lg" variant="default">
-                    Passer PRO - 4,900 FCFA/mois
+                    Passer PRO — {getProPriceLabel()}
+                  </Button>
+                </Link>
+              )}
+              {planStatus.isTrial && (
+                <Link href="/upgrade">
+                  <Button size="lg" variant="secondary">
+                    S&apos;abonner — {getProPriceLabel()}
                   </Button>
                 </Link>
               )}

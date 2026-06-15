@@ -83,8 +83,10 @@ function ConfirmationEmailContent() {
       
       if (user?.email_confirmed_at) {
         setStatus('success');
+        // Rediriger vers la page de connexion après confirmation
+        // L'utilisateur devra se connecter avec son email et mot de passe
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push(`/connexion?email_confirmed=true&email=${encodeURIComponent(user.email || email || '')}`);
           router.refresh();
         }, 2000);
       } else {
@@ -121,7 +123,10 @@ function ConfirmationEmailContent() {
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/confirmation-email?email=${encodeURIComponent(email)}` : undefined,
+          // Utiliser NEXT_PUBLIC_APP_URL en production, sinon window.location.origin en développement
+          emailRedirectTo: typeof window !== 'undefined' 
+            ? `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/confirmation-email?email=${encodeURIComponent(email)}`
+            : undefined,
         },
       });
 

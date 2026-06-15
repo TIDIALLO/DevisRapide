@@ -1,14 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { stripe, STRIPE_PRICE_ID } from '@/lib/stripe/client';
-
-const PRO_PRICE = 4900; // FCFA
+import { PRO_PRICE_MONTHLY, CURRENCY } from '@/lib/subscription/config';
 
 export async function POST(request: NextRequest) {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
+      const isVercel = process.env.VERCEL === '1';
+      const errorMessage = isVercel
+        ? '🚨 Configuration Stripe manquante en production.\n\n' +
+          'SOLUTION :\n' +
+          '1. Aller dans Vercel Dashboard → Settings → Environment Variables\n' +
+          '2. Ajouter STRIPE_SECRET_KEY (commence par sk_live_...)\n' +
+          '3. Ajouter STRIPE_PRICE_ID (optionnel)\n' +
+          '4. Redéployer l\'application\n\n' +
+          'Voir CONFIGURER_STRIPE_VERCEL.md pour les instructions détaillées.'
+        : 'Configuration Stripe manquante. Vérifiez STRIPE_SECRET_KEY dans .env.local';
+      
+      console.error('[Stripe] Configuration manquante:', {
+        environment: isVercel ? 'Vercel (Production)' : 'Local',
+        missingKey: 'STRIPE_SECRET_KEY',
+        vercel: isVercel,
+        nodeEnv: process.env.NODE_ENV,
+      });
+      
       return NextResponse.json(
-        { error: 'Configuration Stripe manquante. Vérifiez STRIPE_SECRET_KEY dans .env.local' },
+        { 
+          error: errorMessage,
+          code: 'STRIPE_CONFIG_MISSING',
+          documentation: isVercel ? 'CONFIGURER_STRIPE_VERCEL.md' : '.env.local',
+        },
         { status: 500 }
       );
     }
@@ -109,8 +130,8 @@ export async function POST(request: NextRequest) {
           quote_id: null, // Pas de facture pour les upgrades
           stripe_session_id: subscriptionSession.id,
           stripe_customer_id: customerId,
-          amount: PRO_PRICE,
-          currency: 'XOF',
+          amount: PRO_PRICE_MONTHLY,
+          currency: CURRENCY,
           payment_type: 'card' as any, // Type temporaire pour compatibilité
           payment_provider: 'stripe' as any,
           status: 'pending',
@@ -120,7 +141,7 @@ export async function POST(request: NextRequest) {
           metadata: {
             type: 'upgrade_pro',
             user_email: user.email,
-            amount: PRO_PRICE.toString(),
+            amount: PRO_PRICE_MONTHLY.toString(),
           },
         } as any)
         .select()

@@ -22,6 +22,7 @@ import { Plus, Search, Edit, Trash2, Package, Copy } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useAlertDialog } from '@/components/ui/alert-dialog';
 import type { CatalogItem } from '@/types';
+import { canCreateCatalogItem } from '@/lib/freemium/limits';
 
 const UNITS = [
   { value: 'm²', label: 'm² (mètre carré)' },
@@ -133,6 +134,16 @@ export default function CataloguePage() {
 
         if (error) throw error;
       } else {
+        // ── Vérification de la limite d'articles ──────────────────────────
+        const catalogLimit = await canCreateCatalogItem(user.id);
+        if (!catalogLimit.allowed) {
+          showAlert(
+            catalogLimit.message || 'Vous avez atteint la limite d\'articles.',
+            'Limite atteinte'
+          );
+          return;
+        }
+
         const { error } = await supabase
           .from('catalog_items')
           .insert({
@@ -156,6 +167,16 @@ export default function CataloguePage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+
+      // ── Vérification de la limite d'articles ──────────────────────────
+      const catalogLimit = await canCreateCatalogItem(user.id);
+      if (!catalogLimit.allowed) {
+        showAlert(
+          catalogLimit.message || 'Vous avez atteint la limite d\'articles.',
+          'Limite atteinte'
+        );
+        return;
+      }
 
       const { error } = await supabase
         .from('catalog_items')
@@ -218,8 +239,20 @@ export default function CataloguePage() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="space-y-6 animate-pulse">
+          <div className="flex items-center justify-between">
+            <div className="h-9 bg-gray-200 rounded-lg w-40" />
+            <div className="h-10 bg-gray-200 rounded-lg w-40" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-10 bg-gray-200 rounded-lg flex-1" />
+            <div className="h-10 bg-gray-200 rounded-lg w-32" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="h-32 bg-gray-200 rounded-lg" />
+            ))}
+          </div>
         </div>
       </AppShell>
     );

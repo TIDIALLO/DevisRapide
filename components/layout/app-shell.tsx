@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t grid grid-cols-5 z-40">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t grid grid-cols-6 z-40">
         {navigation.map((item) => {
           const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
           const Icon = item.icon;
@@ -149,12 +149,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               key={item.name}
               href={item.href}
               prefetch={true}
-              className={`flex flex-col items-center justify-center py-3 transition-colors ${
-                isActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
+              className={`flex flex-col items-center justify-center py-2 transition-colors ${
+                isActive ? 'text-primary' : 'text-gray-500 hover:text-primary'
               }`}
             >
-              <Icon className="w-5 h-5 mb-1" />
-              <span className="text-xs">{item.name}</span>
+              <Icon className={`w-4 h-4 mb-0.5 transition-transform ${isActive ? 'scale-110' : ''}`} />
+              <span className="text-[9px] font-medium leading-tight truncate">{item.name}</span>
             </Link>
           );
         })}

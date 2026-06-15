@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Profession } from '@/types';
 import { SupabaseSetupCard } from '@/components/setup/supabase-setup-card';
+import { WifiOff } from 'lucide-react';
 
 const professions: { value: Profession; label: string }[] = [
   { value: 'peintre', label: 'Peintre' },
@@ -76,10 +77,10 @@ export default function InscriptionPage() {
             full_name: formData.fullName,
             phone: formData.phone,
           },
-          // Rediriger vers la page de confirmation après clic sur le lien email
-          // L'URL doit être absolue et correspondre exactement à celle configurée dans Supabase
+          // Rediriger vers /auth/callback qui échangera le code PKCE
+          // puis redirigera vers la page de connexion avec email_confirmed=true
           emailRedirectTo: typeof window !== 'undefined' 
-            ? `${window.location.origin}/confirmation-email?email=${encodeURIComponent(formData.email)}`
+            ? `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback`
             : undefined,
         },
       });
@@ -116,9 +117,7 @@ export default function InscriptionPage() {
       }
 
       // 2. Créer le profil utilisateur via fonction RPC (contourne RLS)
-      // Cette fonction utilise SECURITY DEFINER pour permettre l'insertion
-      // Utilisation de paramètres nommés pour éviter l'ambiguïté
-      const { error: profileError } = await supabase.rpc('create_user_profile' as any, {
+      const { data: profileData, error: profileError } = await supabase.rpc('create_user_profile' as any, {
         p_user_id: userId,
         p_email: formData.email,
         p_phone: formData.phone,
@@ -128,8 +127,7 @@ export default function InscriptionPage() {
       });
 
       if (profileError) {
-        // Gérer l'erreur d'email déjà existant avec un message professionnel
-        if (profileError.message?.includes('duplicate key') || 
+        if (profileError.message?.includes('duplicate key') ||
             profileError.message?.includes('users_email_key') ||
             profileError.message?.includes('users_phone_key') ||
             profileError.message?.includes('email est déjà utilisé') ||
@@ -168,67 +166,28 @@ export default function InscriptionPage() {
           is_template: false,
         }));
 
-        if (templates.length === 0) {
-          console.warn('Aucun template trouvé pour la profession:', formData.profession);
-        } else {
+        if (templates.length > 0) {
           // Vérifier d'abord que la table existe en faisant un SELECT simple
           const { error: checkError } = await supabase
             .from('catalog_items')
             .select('id')
             .limit(1);
 
-          if (checkError) {
-            console.error('❌ La table catalog_items n\'existe pas ou n\'est pas accessible:', {
-              message: checkError.message,
-              code: checkError.code,
-              details: checkError.details,
-              hint: checkError.hint || 'Exécute le script create-all-tables.sql dans Supabase SQL Editor',
-            });
-          } else {
+          if (!checkError) {
             // Si la session n'est toujours pas disponible, utiliser la fonction RPC
             if (!session) {
               // Utiliser la fonction RPC qui contourne RLS
               // Convertir les templates en JSONB (sans user_id car il est passé séparément)
-              const itemsForRpc = templates.map(({ user_id, ...rest }) => rest);
-              const { error: catalogError, data: catalogCount } = await (supabase.rpc as any)(
-                'import_catalog_items',
-                {
-                  p_user_id: userId,
-                  p_items: itemsForRpc, // Supabase convertira automatiquement en JSONB
-                }
-              );
-
-              if (catalogError) {
-                console.error('❌ Erreur import catalogue (via RPC):', catalogError);
-              } else {
-                console.log(`✅ ${catalogCount || templates.length} articles importés dans le catalogue (via RPC)`);
-              }
+              const itemsForRpc = templates.map(({ user_id: _uid, ...rest }) => rest);
+              await (supabase.rpc as any)('import_catalog_items', { p_user_id: userId, p_items: itemsForRpc });
             } else {
               // La session est disponible, on peut utiliser INSERT normal
-              const { error: catalogError, data: catalogData } = await supabase
-                .from('catalog_items')
-                .insert(templates)
-                .select();
-
-              if (catalogError) {
-                console.error('❌ Erreur import catalogue:', {
-                  message: catalogError?.message,
-                  code: catalogError?.code,
-                  details: catalogError?.details,
-                  hint: catalogError?.hint,
-                });
-              } else {
-                console.log(`✅ ${catalogData?.length || 0} articles importés dans le catalogue`);
-              }
+              await supabase.from('catalog_items').insert(templates).select();
             }
           }
         }
-      } catch (catalogImportError: any) {
-        console.error('❌ Erreur lors de l\'import du catalogue:', {
-          error: catalogImportError,
-          message: catalogImportError?.message,
-        });
-        // Ne pas bloquer l'inscription si l'import du catalogue échoue
+      } catch {
+        // Import catalogue non-critique, ne bloque pas l'inscription
       }
 
       // 4. Si l'email est déjà confirmé (peu probable mais possible), rediriger vers le dashboard
@@ -237,15 +196,17 @@ export default function InscriptionPage() {
         router.push('/dashboard');
       }
     } catch (err: any) {
-      // Messages d'erreur professionnels et modernes
-      const errorMessage = err.message || 'Une erreur est survenue lors de la création de votre compte.';
-      
-      // Si le message contient déjà un emoji, l'utiliser tel quel
-      if (errorMessage.includes('📧') || errorMessage.includes('🔒') || errorMessage.includes('❌') || errorMessage.includes('📱')) {
-        setError(errorMessage);
+      // Détecter les erreurs réseau
+      if (
+        err.message === 'Failed to fetch' ||
+        err.message?.includes('NetworkError') ||
+        err.message?.includes('net::ERR') ||
+        (err.name === 'TypeError' && !err.message?.includes('Cannot'))
+      ) {
+        setError('Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.');
       } else {
-        // Sinon, ajouter un emoji approprié
-        setError(`❌ ${errorMessage}`);
+        const errorMessage = err.message || 'Une erreur est survenue lors de la création de votre compte.';
+        setError(errorMessage);
       }
     } finally {
       setLoading(false);
@@ -264,8 +225,9 @@ export default function InscriptionPage() {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
-                {error}
+              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm flex items-start gap-2">
+                {error.includes('connexion internet') && <WifiOff className="h-4 w-4 mt-0.5 shrink-0" />}
+                <span>{error}</span>
               </div>
             )}
 

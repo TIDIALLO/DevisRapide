@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { PRO_PRICE_MONTHLY, CURRENCY } from '@/lib/subscription/config';
 
-const PRO_PRICE = 4900; // FCFA
 const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/test_dRm5kFc3O9hb3968ITfbq00tu';
 
 export async function POST(request: NextRequest) {
@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         quote_id: null,
         stripe_checkout_url: STRIPE_CHECKOUT_URL,
-        amount: PRO_PRICE,
-        currency: 'XOF',
+        amount: PRO_PRICE_MONTHLY,
+        currency: CURRENCY,
         payment_type: 'stripe_card' as any,
         payment_provider: 'stripe' as any,
         status: 'pending',

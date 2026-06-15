@@ -6,6 +6,12 @@ import { FileText, Zap, TrendingUp, Clock, ShieldCheck, Smartphone } from 'lucid
 import { motion } from 'framer-motion';
 import { useRef } from 'react';
 import { DevisRapideLogo } from '@/components/ui/logo';
+import {
+  PLANS,
+  PRO_FEATURES,
+  FREE_FEATURES,
+  TRIAL_DURATION_DAYS,
+} from '@/lib/subscription/config';
 
 export default function HomePage() {
   return (
@@ -181,7 +187,7 @@ export default function HomePage() {
             {[
               { icon: ShieldCheck, text: 'Gratuit pour commencer' },
               { icon: Zap, text: 'Sans carte bancaire' },
-              { icon: Clock, text: '5 devis/mois offerts' },
+              { icon: Clock, text: `${PLANS.free.maxQuotes} devis/mois offerts` },
             ].map((item, index) => {
               const Icon = item.icon;
               return (
@@ -466,13 +472,7 @@ export default function HomePage() {
               </div>
 
               <ul className="space-y-2 text-sm mb-6">
-                {[
-                  '5 devis/mois',
-                  '20 articles catalogue',
-                  '10 clients max',
-                  'Envoi WhatsApp/SMS/Email',
-                  'Watermark sur PDF',
-                ].map((t) => (
+                {FREE_FEATURES.map((t) => (
                   <li key={t} className="flex items-center gap-2.5 text-gray-700 font-normal">
                     <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
                       <span className="w-2 h-2 rounded-full bg-blue-600" />
@@ -563,14 +563,7 @@ export default function HomePage() {
               </div>
 
               <ul className="space-y-2 text-sm mb-6">
-                {[
-                  'Devis illimités',
-                  'Catalogue illimité',
-                  'Clients illimités',
-                  'Sans watermark',
-                  'Templates multiples',
-                  'Support WhatsApp prioritaire',
-                ].map((t) => (
+                {PRO_FEATURES.map((t) => (
                   <li key={t} className="flex items-center gap-2.5 text-gray-800 font-medium">
                     <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
                       <span className="w-2 h-2 rounded-full bg-white" />
@@ -586,7 +579,7 @@ export default function HomePage() {
               >
                 <Link href="/inscription" className="block">
                   <Button className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg">
-                    Essai 14 jours gratuits
+                    Essai {TRIAL_DURATION_DAYS} jours gratuits
                   </Button>
                 </Link>
               </motion.div>

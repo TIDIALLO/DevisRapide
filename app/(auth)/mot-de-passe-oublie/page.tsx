@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,12 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { SupabaseSetupCard } from '@/components/setup/supabase-setup-card';
-import { Mail, ArrowLeft } from 'lucide-react';
+import { Mail, ArrowLeft, WifiOff } from 'lucide-react';
 
 export default function MotDePasseOubliePage() {
-  const router = useRouter();
   const configured = isSupabaseConfigured();
-  const supabase = configured ? createClient() : null;
+  const supabase = useMemo(() => (configured ? createClient() : null), [configured]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +35,10 @@ export default function MotDePasseOubliePage() {
       }
 
       // Envoyer l'email de réinitialisation
+      // Redirige vers /auth/callback qui échangera le code PKCE
+      // puis redirigera vers /nouveau-mot-de-passe
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/nouveau-mot-de-passe`,
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback?next=/nouveau-mot-de-passe`,
       });
 
       if (resetError) {
@@ -57,9 +57,18 @@ export default function MotDePasseOubliePage() {
 
       setSuccess(true);
     } catch (err: any) {
-      // En cas d'erreur, on affiche quand même un message de succès
-      // pour ne pas révéler si l'email existe ou non
-      setSuccess(true);
+      // Détecter les erreurs réseau
+      if (
+        err.message === 'Failed to fetch' ||
+        err.message?.includes('NetworkError') ||
+        err.message?.includes('net::ERR') ||
+        (err.name === 'TypeError' && !err.message?.includes('Cannot'))
+      ) {
+        setError('Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.');
+      } else {
+        // En cas d'autre erreur, afficher succès pour ne pas révéler si l'email existe
+        setSuccess(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -120,8 +129,9 @@ export default function MotDePasseOubliePage() {
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               {error && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
-                  {error}
+                <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm flex items-start gap-2">
+                  {error.includes('connexion internet') && <WifiOff className="h-4 w-4 mt-0.5 shrink-0" />}
+                  <span>{error}</span>
                 </div>
               )}
 

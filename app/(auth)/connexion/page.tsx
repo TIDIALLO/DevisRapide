@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { SupabaseSetupCard } from '@/components/setup/supabase-setup-card';
+import { WifiOff } from 'lucide-react';
 
 function ConnexionForm() {
   const router = useRouter();
@@ -24,11 +25,23 @@ function ConnexionForm() {
     password: '',
   });
 
-  // Vérifier si on vient d'une réinitialisation de mot de passe réussie
+  // Vérifier si on vient d'une réinitialisation, confirmation, ou erreur auth callback
   useEffect(() => {
     if (searchParams.get('password_reset') === 'success') {
       setSuccess('✅ Votre mot de passe a été modifié avec succès. Vous pouvez maintenant vous connecter.');
-      // Retirer le paramètre de l'URL
+      router.replace('/connexion', { scroll: false });
+    } else if (searchParams.get('email_confirmed') === 'true') {
+      const confirmedEmail = searchParams.get('email');
+      setSuccess(`✅ Votre email ${confirmedEmail ? `(${confirmedEmail})` : ''} a été confirmé avec succès ! Vous pouvez maintenant vous connecter.`);
+      if (confirmedEmail) {
+        setFormData(prev => ({ ...prev, email: confirmedEmail }));
+      }
+      router.replace('/connexion', { scroll: false });
+    } else if (searchParams.get('error') === 'auth_callback_failed') {
+      setError('Le lien a expiré ou est invalide. Veuillez réessayer.');
+      router.replace('/connexion', { scroll: false });
+    } else if (searchParams.get('error') === 'token_invalid') {
+      setError('Le lien de réinitialisation est invalide ou a déjà été utilisé.');
       router.replace('/connexion', { scroll: false });
     }
   }, [searchParams, router]);
@@ -91,21 +104,26 @@ function ConnexionForm() {
       // avant de rediriger
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Vérifier que la session est bien stockée
       const { data: { session: finalSession } } = await supabase.auth.getSession();
       if (!finalSession) {
-        console.error('⚠️ Session non stockée après connexion');
         setError('⚠️ Problème de session. Veuillez réessayer.');
         return;
       }
-      
-      console.log('✅ Session stockée - User ID:', finalSession.user.id);
-      
+
       router.push('/dashboard');
       router.refresh();
     } catch (err: any) {
-      // Message d'erreur générique professionnel
-      setError(err.message || '❌ Une erreur est survenue lors de la connexion. Veuillez réessayer.');
+      // Détecter les erreurs réseau (DNS non résolu, pas d'internet, serveur injoignable)
+      if (
+        err.message === 'Failed to fetch' ||
+        err.message?.includes('NetworkError') ||
+        err.message?.includes('net::ERR') ||
+        err.name === 'TypeError' && !err.message?.includes('Cannot')
+      ) {
+        setError('Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.');
+      } else {
+        setError(err.message || 'Une erreur est survenue lors de la connexion. Veuillez réessayer.');
+      }
     } finally {
       setLoading(false);
     }
@@ -128,8 +146,9 @@ function ConnexionForm() {
               </div>
             )}
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
-                {error}
+              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm flex items-start gap-2">
+                {error.includes('connexion internet') && <WifiOff className="h-4 w-4 mt-0.5 shrink-0" />}
+                <span>{error}</span>
               </div>
             )}
 

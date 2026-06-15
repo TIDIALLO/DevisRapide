@@ -4,8 +4,11 @@ import Link from 'next/link';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Users, Package, Plus, TrendingUp, Clock } from 'lucide-react';
+import { FileText, Users, Package, Plus, TrendingUp, Clock, Crown, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { getPlanStatus } from '@/lib/subscription/plan-validator';
+import { PLANS, TRIAL_DURATION_DAYS, getProPriceLabel } from '@/lib/subscription/config';
+import type { Plan } from '@/lib/subscription/config';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -65,7 +68,18 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(5);
 
-  const isPro = profile?.plan === 'pro';
+  // Calcul du statut réel du plan (essai, actif, expiré, etc.)
+  const planStatus = profile
+    ? getPlanStatus({
+        plan: profile.plan as Plan,
+        planExpiresAt: profile.plan_expires_at,
+        createdAt: profile.created_at,
+      })
+    : null;
+
+  const hasProAccess = planStatus?.hasProAccess ?? false;
+  const effectivePlan = planStatus?.effectivePlan ?? 'free';
+  const maxQuotes = PLANS[effectivePlan].maxQuotes;
 
   return (
     <AppShell>
@@ -88,26 +102,64 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
+        {/* Avertissement plan (expiration, paiement en retard…) */}
+        {planStatus?.warningMessage && (
+          <Card className="border-orange-200 bg-orange-50 shadow-md">
+            <CardContent className="p-4 flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0" />
+              <p className="text-orange-800 font-semibold text-sm">{planStatus.warningMessage}</p>
+              {!hasProAccess && (
+                <Link href="/upgrade" className="ml-auto flex-shrink-0">
+                  <Button size="sm" variant="default">Renouveler</Button>
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Plan Badge */}
-        {!isPro && (
+        {planStatus?.isTrial ? (
+          // Période d'essai
+          <Card className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-lg">
+            <CardContent className="p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Crown className="w-5 h-5" />
+                    <h3 className="font-bold text-lg md:text-xl tracking-tight">Essai PRO gratuit</h3>
+                  </div>
+                  <p className="text-green-100 text-sm font-medium">
+                    {planStatus.daysRemaining} jour{planStatus.daysRemaining > 1 ? 's' : ''} restant{planStatus.daysRemaining > 1 ? 's' : ''} — Accès illimité
+                  </p>
+                </div>
+                <Link href="/upgrade">
+                  <Button variant="secondary" size="lg">
+                    S&apos;abonner — {getProPriceLabel()}
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        ) : !hasProAccess ? (
+          // Plan gratuit (pas d'essai, pas de PRO)
           <Card className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-lg">
             <CardContent className="p-5">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <h3 className="font-bold text-lg md:text-xl mb-1.5 tracking-tight">Plan Gratuit</h3>
                   <p className="text-blue-100 text-sm font-medium">
-                    Vous avez créé {thisMonthQuotes}/5 devis ce mois-ci
+                    Vous avez créé {thisMonthQuotes}/{maxQuotes} devis ce mois-ci
                   </p>
                 </div>
-                <Link href="/profil#upgrade">
+                <Link href="/upgrade">
                   <Button variant="secondary" size="lg">
-                    Passer PRO
+                    Passer PRO — {getProPriceLabel()}
                   </Button>
                 </Link>
               </div>
             </CardContent>
           </Card>
-        )}
+        ) : null}
 
         {/* Stats Cards */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">

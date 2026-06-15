@@ -139,8 +139,20 @@ export default function DevisPage() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="space-y-6 animate-pulse">
+          <div className="flex items-center justify-between">
+            <div className="h-9 bg-gray-200 rounded-lg w-32" />
+            <div className="h-10 bg-gray-200 rounded-lg w-40" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-10 bg-gray-200 rounded-lg flex-1" />
+            <div className="h-10 bg-gray-200 rounded-lg w-36" />
+          </div>
+          <div className="space-y-3">
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="h-20 bg-gray-200 rounded-lg" />
+            ))}
+          </div>
         </div>
       </AppShell>
     );

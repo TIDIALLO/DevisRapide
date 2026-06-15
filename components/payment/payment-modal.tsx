@@ -135,6 +135,12 @@ export function PaymentModal({
       const data = await response.json();
 
       if (!response.ok) {
+        // Erreur de configuration Stripe en production
+        if (data?.code === 'STRIPE_CONFIG_MISSING') {
+          const errorMsg = data.error || 'Configuration Stripe manquante';
+          alert(errorMsg);
+          throw new Error(errorMsg);
+        }
         const errorMessage = data?.error || data?.message || `Erreur ${response.status}: ${response.statusText}`;
         throw new Error(errorMessage);
       }

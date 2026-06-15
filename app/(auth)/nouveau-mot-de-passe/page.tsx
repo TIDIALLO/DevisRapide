@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useMemo, useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -9,13 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { SupabaseSetupCard } from '@/components/setup/supabase-setup-card';
-import { Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle2, WifiOff } from 'lucide-react';
 
 function NouveauMotDePasseContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const configured = isSupabaseConfigured();
-  const supabase = configured ? createClient() : null;
+  const supabase = useMemo(() => (configured ? createClient() : null), [configured]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +103,16 @@ function NouveauMotDePasseContent() {
         router.push('/connexion?password_reset=success');
       }, 2000);
     } catch (err: any) {
-      setError(err.message || '❌ Une erreur est survenue. Veuillez réessayer.');
+      if (
+        err.message === 'Failed to fetch' ||
+        err.message?.includes('NetworkError') ||
+        err.message?.includes('net::ERR') ||
+        (err.name === 'TypeError' && !err.message?.includes('Cannot'))
+      ) {
+        setError('Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.');
+      } else {
+        setError(err.message || 'Une erreur est survenue. Veuillez réessayer.');
+      }
     } finally {
       setLoading(false);
     }
@@ -146,8 +155,9 @@ function NouveauMotDePasseContent() {
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               {error && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
-                  {error}
+                <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm flex items-start gap-2">
+                  {error.includes('connexion internet') && <WifiOff className="h-4 w-4 mt-0.5 shrink-0" />}
+                  <span>{error}</span>
                 </div>
               )}
 

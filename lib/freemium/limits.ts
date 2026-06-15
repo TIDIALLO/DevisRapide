@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
-import type { User } from '@/types';
-import { PLAN_LIMITS } from '@/types';
+import { PLANS } from '@/lib/subscription/config';
+import { getPlanStatus, getEffectivePlan } from '@/lib/subscription/plan-validator';
+import type { Plan } from '@/lib/subscription/config';
+import type { UserPlanInfo } from '@/lib/subscription/plan-validator';
 
 export interface LimitCheckResult {
   allowed: boolean;
@@ -10,17 +12,69 @@ export interface LimitCheckResult {
 }
 
 /**
- * Vérifie si l'utilisateur peut créer un nouveau devis
+ * Construit les infos plan d'un utilisateur à partir du profil DB.
+ * Utilise getEffectivePlan() pour tenir compte de l'expiration et de l'essai.
  */
-export async function canCreateQuote(userId: string, plan: 'free' | 'pro'): Promise<LimitCheckResult> {
-  const limits = PLAN_LIMITS[plan];
-  
+function buildUserPlanInfo(profile: {
+  plan: string;
+  plan_expires_at: string | null;
+  created_at: string;
+}): { effectivePlan: Plan; userInfo: UserPlanInfo } {
+  const userInfo: UserPlanInfo = {
+    plan: profile.plan as Plan,
+    planExpiresAt: profile.plan_expires_at,
+    createdAt: profile.created_at,
+  };
+  return { effectivePlan: getEffectivePlan(userInfo), userInfo };
+}
+
+/**
+ * Récupère le plan effectif d'un utilisateur (tient compte de l'expiration et de l'essai).
+ */
+export async function getUserEffectivePlan(userId: string): Promise<{
+  plan: Plan;
+  status: ReturnType<typeof getPlanStatus>;
+}> {
+  const supabase = createClient();
+  const { data: profile } = await supabase
+    .from('users')
+    .select('plan, plan_expires_at, created_at')
+    .eq('id', userId)
+    .single();
+
+  if (!profile) {
+    return {
+      plan: 'free',
+      status: getPlanStatus({ plan: 'free', planExpiresAt: null, createdAt: new Date().toISOString() }),
+    };
+  }
+
+  const userInfo: UserPlanInfo = {
+    plan: profile.plan as Plan,
+    planExpiresAt: profile.plan_expires_at,
+    createdAt: profile.created_at,
+  };
+
+  return {
+    plan: getEffectivePlan(userInfo),
+    status: getPlanStatus(userInfo),
+  };
+}
+
+/**
+ * Vérifie si l'utilisateur peut créer un nouveau devis.
+ * Utilise le plan effectif (après vérification expiration + essai).
+ */
+export async function canCreateQuote(userId: string, planOverride?: Plan): Promise<LimitCheckResult> {
+  const plan = planOverride ?? (await getUserEffectivePlan(userId)).plan;
+  const limits = PLANS[plan];
+
   if (limits.maxQuotes === null) {
     return { allowed: true, current: 0, limit: null };
   }
 
   const supabase = createClient();
-  
+
   // Compter les devis du mois en cours
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
@@ -46,11 +100,12 @@ export async function canCreateQuote(userId: string, plan: 'free' | 'pro'): Prom
 }
 
 /**
- * Vérifie si l'utilisateur peut ajouter un nouveau client
+ * Vérifie si l'utilisateur peut ajouter un nouveau client.
  */
-export async function canCreateClient(userId: string, plan: 'free' | 'pro'): Promise<LimitCheckResult> {
-  const limits = PLAN_LIMITS[plan];
-  
+export async function canCreateClient(userId: string, planOverride?: Plan): Promise<LimitCheckResult> {
+  const plan = planOverride ?? (await getUserEffectivePlan(userId)).plan;
+  const limits = PLANS[plan];
+
   if (limits.maxClients === null) {
     return { allowed: true, current: 0, limit: null };
   }
@@ -76,11 +131,12 @@ export async function canCreateClient(userId: string, plan: 'free' | 'pro'): Pro
 }
 
 /**
- * Vérifie si l'utilisateur peut ajouter un nouvel article au catalogue
+ * Vérifie si l'utilisateur peut ajouter un nouvel article au catalogue.
  */
-export async function canCreateCatalogItem(userId: string, plan: 'free' | 'pro'): Promise<LimitCheckResult> {
-  const limits = PLAN_LIMITS[plan];
-  
+export async function canCreateCatalogItem(userId: string, planOverride?: Plan): Promise<LimitCheckResult> {
+  const plan = planOverride ?? (await getUserEffectivePlan(userId)).plan;
+  const limits = PLANS[plan];
+
   if (limits.maxCatalogItems === null) {
     return { allowed: true, current: 0, limit: null };
   }
@@ -106,9 +162,11 @@ export async function canCreateCatalogItem(userId: string, plan: 'free' | 'pro')
 }
 
 /**
- * Récupère toutes les limites actuelles de l'utilisateur
+ * Récupère toutes les limites actuelles de l'utilisateur.
  */
-export async function getUserLimits(userId: string, plan: 'free' | 'pro') {
+export async function getUserLimits(userId: string) {
+  const { plan, status } = await getUserEffectivePlan(userId);
+
   const [quotes, clients, catalogItems] = await Promise.all([
     canCreateQuote(userId, plan),
     canCreateClient(userId, plan),
@@ -120,15 +178,15 @@ export async function getUserLimits(userId: string, plan: 'free' | 'pro') {
     clients,
     catalogItems,
     plan,
-    limits: PLAN_LIMITS[plan],
+    planStatus: status,
+    limits: PLANS[plan],
   };
 }
 
 /**
- * Fonction pour créer un message de limite
+ * Retourne un message de limite lisible.
  */
 export function getLimitMessage(result: LimitCheckResult): string | null {
   if (result.allowed) return null;
   return result.message || 'Limite atteinte';
 }
-

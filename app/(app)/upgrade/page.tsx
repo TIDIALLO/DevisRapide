@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -10,18 +10,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { PaymentModal } from '@/components/payment/payment-modal';
 import { useAlertDialog } from '@/components/ui/alert-dialog';
 import { Crown, Check, ArrowLeft } from 'lucide-react';
-import { useEffect } from 'react';
-
-const PRO_FEATURES = [
-  'Devis illimités',
-  'Catalogue illimité',
-  'Clients illimités',
-  'Sans watermark',
-  'Templates multiples',
-  'Support WhatsApp prioritaire',
-];
-
-const PRO_PRICE = 4900; // FCFA
+import {
+  PRO_FEATURES,
+  FREE_FEATURES,
+  PRO_PRICE_MONTHLY,
+  PLANS,
+  formatPriceFCFA,
+  getProPriceLabel,
+  TRIAL_DURATION_DAYS,
+} from '@/lib/subscription/config';
+import { getPlanStatus } from '@/lib/subscription/plan-validator';
+import type { UserPlanInfo } from '@/lib/subscription/plan-validator';
 
 export default function UpgradePage() {
   const router = useRouter();
@@ -72,9 +71,18 @@ export default function UpgradePage() {
     );
   }
 
-  const isPro = profile?.plan === 'pro';
+  // Déterminer le statut réel du plan (essai, actif, expiré…)
+  const planStatus = profile
+    ? getPlanStatus({
+        plan: profile.plan,
+        planExpiresAt: profile.plan_expires_at,
+        createdAt: profile.created_at,
+      })
+    : null;
 
-  if (isPro) {
+  const hasProAccess = planStatus?.hasProAccess ?? false;
+
+  if (hasProAccess && planStatus?.status === 'active') {
     return (
       <AppShell>
         <div className="max-w-4xl mx-auto py-8">
@@ -85,7 +93,9 @@ export default function UpgradePage() {
                 <div>
                   <CardTitle className="text-white text-2xl">Vous êtes déjà PRO !</CardTitle>
                   <CardDescription className="text-amber-100">
-                    Vous avez accès à toutes les fonctionnalités premium
+                    {planStatus.isTrial
+                      ? `Essai gratuit — ${planStatus.daysRemaining} jour${planStatus.daysRemaining > 1 ? 's' : ''} restant${planStatus.daysRemaining > 1 ? 's' : ''}`
+                      : 'Vous avez accès à toutes les fonctionnalités premium'}
                   </CardDescription>
                 </div>
               </div>
@@ -120,7 +130,29 @@ export default function UpgradePage() {
           </div>
         </div>
 
-        {/* Pricing Card - Design professionnel amélioré */}
+        {/* Avertissement si plan expiré */}
+        {planStatus?.status === 'expired' && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <p className="text-red-700 font-semibold">
+                ⚠️ {planStatus.warningMessage}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Avertissement si paiement en retard */}
+        {planStatus?.status === 'past_due' && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <p className="text-orange-700 font-semibold">
+                ⏳ {planStatus.warningMessage}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Pricing Card */}
         <Card className="border-2 border-primary bg-gradient-to-br from-primary/5 via-white to-primary/5 shadow-xl overflow-hidden relative">
           <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-primary/20 to-transparent rounded-bl-full"></div>
           <CardHeader className="relative">
@@ -133,7 +165,7 @@ export default function UpgradePage() {
                   <CardTitle className="text-3xl font-bold text-gray-900">Plan PRO</CardTitle>
                 </div>
                 <CardDescription className="text-base font-medium text-gray-700">
-                  Accès illimité à toutes les fonctionnalités premium
+                  {PLANS.pro.description}
                 </CardDescription>
               </div>
               <span className="rounded-full bg-gradient-to-r from-primary to-primary/80 px-4 py-1.5 text-xs font-bold text-white shadow-lg">
@@ -142,7 +174,7 @@ export default function UpgradePage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6 relative">
-            {/* Price - Design amélioré */}
+            {/* Price */}
             <div className="text-center py-6 bg-gradient-to-br from-primary/10 to-transparent rounded-xl border-2 border-primary/20">
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-6xl font-black text-gray-900">4</span>
@@ -152,7 +184,7 @@ export default function UpgradePage() {
               </div>
               <div className="text-base text-gray-600 mt-2 font-semibold">/mois</div>
               <p className="text-sm text-green-600 font-bold mt-3 flex items-center justify-center gap-2">
-                <span className="text-lg">✅</span> Essai 14 jours gratuits
+                <span className="text-lg">✅</span> Essai {TRIAL_DURATION_DAYS} jours gratuits
               </p>
             </div>
 
@@ -174,26 +206,26 @@ export default function UpgradePage() {
               onClick={async () => {
                 try {
                   setLoading(true);
-                  // Créer la session de paiement pour l'abonnement
                   const response = await fetch('/api/stripe/create-checkout-session', {
                     method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                       isUpgrade: true,
-                      amount: PRO_PRICE,
+                      amount: PRO_PRICE_MONTHLY,
                     }),
                   });
 
                   const data = await response.json();
 
                   if (!response.ok) {
+                    if (data.code === 'STRIPE_CONFIG_MISSING') {
+                      alert(data.error || 'Configuration Stripe manquante');
+                      throw new Error(data.error);
+                    }
                     throw new Error(data.error || 'Erreur lors de la création de la session');
                   }
 
                   if (data.url) {
-                    // Rediriger vers la page de paiement
                     window.location.href = data.url;
                   } else {
                     throw new Error('URL de checkout non reçue');
@@ -216,7 +248,7 @@ export default function UpgradePage() {
               ) : (
                 <>
                   <Crown className="w-6 h-6 mr-2" />
-                  S'abonner au Plan PRO - 4,900 FCFA/mois
+                  S&apos;abonner au Plan PRO — {getProPriceLabel()}
                 </>
               )}
             </Button>
@@ -247,23 +279,28 @@ export default function UpgradePage() {
                 <tbody>
                   <tr className="border-b">
                     <td className="py-3 px-4">Devis par mois</td>
-                    <td className="text-center py-3 px-4">5</td>
+                    <td className="text-center py-3 px-4">{PLANS.free.maxQuotes}</td>
                     <td className="text-center py-3 px-4 bg-primary/10 font-semibold">Illimité</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 px-4">Articles catalogue</td>
-                    <td className="text-center py-3 px-4">20</td>
+                    <td className="text-center py-3 px-4">{PLANS.free.maxCatalogItems}</td>
                     <td className="text-center py-3 px-4 bg-primary/10 font-semibold">Illimité</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 px-4">Clients</td>
-                    <td className="text-center py-3 px-4">10</td>
+                    <td className="text-center py-3 px-4">{PLANS.free.maxClients}</td>
                     <td className="text-center py-3 px-4 bg-primary/10 font-semibold">Illimité</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 px-4">Watermark sur PDF</td>
                     <td className="text-center py-3 px-4">Oui</td>
                     <td className="text-center py-3 px-4 bg-primary/10 font-semibold">Non</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-3 px-4">Export multi-format</td>
+                    <td className="text-center py-3 px-4">—</td>
+                    <td className="text-center py-3 px-4 bg-primary/10 font-semibold">✓</td>
                   </tr>
                   <tr>
                     <td className="py-3 px-4">Support</td>
@@ -280,10 +317,10 @@ export default function UpgradePage() {
         <PaymentModal
           open={paymentModalOpen}
           onOpenChange={setPaymentModalOpen}
-          amount={PRO_PRICE}
+          amount={PRO_PRICE_MONTHLY}
           quoteNumber="UPGRADE-PRO"
-          quoteId="upgrade-pro" // ID spécial pour les upgrades
-          onPaymentInitiated={(checkoutUrl) => {
+          quoteId="upgrade-pro"
+          onPaymentInitiated={() => {
             setPaymentModalOpen(false);
           }}
         />

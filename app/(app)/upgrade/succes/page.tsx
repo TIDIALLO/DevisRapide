@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle2, Crown, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { formatPriceFCFA, PRO_PRICE_MONTHLY } from '@/lib/subscription/config';
 
 function UpgradeSuccessContent() {
   const router = useRouter();
@@ -154,7 +155,7 @@ function UpgradeSuccessContent() {
             <div className="bg-white p-4 rounded-lg border">
               <p className="text-sm text-gray-600 mb-1">Montant payé</p>
               <p className="text-2xl font-bold text-green-700">
-                4.900 FCFA
+                {formatPriceFCFA(PRO_PRICE_MONTHLY)}
               </p>
               <p className="text-xs text-gray-500 mt-1">Abonnement mensuel</p>
             </div>

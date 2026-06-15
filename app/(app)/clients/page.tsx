@@ -21,6 +21,7 @@ import { Plus, Search, Phone, Mail, MapPin, Edit, Trash2, User } from 'lucide-re
 import type { Client } from '@/types';
 import { useToast } from '@/components/ui/toast';
 import { useAlertDialog } from '@/components/ui/alert-dialog';
+import { canCreateClient } from '@/lib/freemium/limits';
 
 export default function ClientsPage() {
   const router = useRouter();
@@ -224,6 +225,18 @@ export default function ClientsPage() {
           description: `${updatedClient.full_name} a été mis à jour avec succès.`,
         });
       } else {
+        // ── Vérification de la limite de clients ──────────────────────────
+        const clientLimit = await canCreateClient(user.id);
+        if (!clientLimit.allowed) {
+          addToast({
+            type: 'error',
+            title: 'Limite atteinte',
+            description: clientLimit.message || 'Vous avez atteint la limite de clients.',
+            duration: 8000,
+          });
+          return;
+        }
+
         // Création - S'assurer que user_id correspond exactement à auth.uid()
         const clientData = {
           user_id: user.id, // Doit correspondre à auth.uid() pour que RLS accepte
@@ -345,8 +358,17 @@ export default function ClientsPage() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="space-y-6 animate-pulse">
+          <div className="flex items-center justify-between">
+            <div className="h-9 bg-gray-200 rounded-lg w-32" />
+            <div className="h-10 bg-gray-200 rounded-lg w-36" />
+          </div>
+          <div className="h-10 bg-gray-200 rounded-lg" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="h-40 bg-gray-200 rounded-lg" />
+            ))}
+          </div>
         </div>
       </AppShell>
     );
